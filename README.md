@@ -1,6 +1,7 @@
 # mythmunge
 MythTV user job bash script to remove commercials / transcode / copy / etc. recordings  
-
+  
+Jerry Fath jerryfath@gmail.com  
 Based on an original script by: Ian Thiele icthiele@gmail.com  
 
  **Installation:**  
