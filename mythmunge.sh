@@ -35,6 +35,7 @@
 #   fileop=[archive|replace|new]
 #   newdir=/directory/for/new
 #   remcom=[yes|no]
+#   filetype=
 #   vcodec=
 #   vcodecargs=
 #   acodec=
@@ -45,6 +46,10 @@
 #   tmpdir=
 #   logdir=
 #   dbpasswd=
+#   datefirst=
+#   tvdblookup=
+#   precmd=
+#   postcmd=
 #
 
 #fileop=
@@ -64,8 +69,8 @@
 # !!!Allow user to specify other containers mp4, etc.
 # !!!Avoid duplicate episode numbers if lookup fails
 # !!!Use last two digits of year as season and mmdd as episode if lookup fails
-# !!!allow setting episodedatefirst and nolookup in defaults/command line/config file
-# !!!allow pre command and post command
+# !!!(test) allow setting episodedatefirst and nolookup in defaults/command line/config file
+# !!!(test) allow pre command and post command
 
 #===============================================================================
 
@@ -82,6 +87,7 @@ DEF_CFGFILE="${HOME}/${PROGNOEXT}/${PROGNOEXT}.cfg"
 DEF_FILEOP="new"
 DEF_NEWDIR="${HOME}/${PROGNOEXT}/DVR"
 DEF_REMCOM="no"
+DEF_FILETYPE="mkv"
 DEF_NOTIFY="none"
 DEF_VCODEC="copy"
 DEF_VCODECARGS=""
@@ -91,6 +97,10 @@ DEF_EMAIL="user@emailserver.com"
 DEF_TMPDIR="${HOME}/${PROGNOEXT}/tmp"
 DEF_LOGDIR="${HOME}/${PROGNOEXT}/log"
 DEF_DBPASSWD="mythtv"
+DEF_DATEFIRST="no"
+DEF_TVDBLOOKUP="yes"
+DEF_PRECMD=""
+DEF_POSTCMD=""
 #DefaultsEditBlock==============================================================
 
 
@@ -124,6 +134,7 @@ CFGOPTIONSTR="`grep '^options=' "${OPT_CFGFILE}"`"
 OPT_FILEOP=$( optionvalue "fileop=" "${DEF_FILEOP}" )
 OPT_NEWDIR=$( optionvalue "newdir=" "${DEF_NEWDIR}" )
 OPT_REMCOM=$( optionvalue "remcom=" "${DEF_REMCOM}" )
+OPT_FILETYPE=$( optionvalue "filetype=" "${DEF_FILETYPE}" )
 OPT_ACODEC=$( optionvalue "acodec=" "${DEF_ACODEC}" )
 OPT_ACODECARGS=$( optionvalue "acodecargs=" "${DEF_ACODECARGS}" )
 OPT_VCODEC=$( optionvalue "vcodec=" "${DEF_VCODEC}" )
@@ -133,7 +144,10 @@ OPT_EMAIL=$( optionvalue "email=" "${DEF_EMAIL}" )
 OPT_TMPDIR=$( optionvalue "tmpdir=" "${DEF_TMPDIR}" )
 OPT_LOGDIR=$( optionvalue "logdir=" "${DEF_LOGDIR}" )
 OPT_DBPASSWD=$( optionvalue "dbpasswd=" "${DEF_DBPASSWD}" )
-
+OPT_DATEFIRST=$( optionvalue "datefirst=" "${DEF_DATEFIRST}" )
+OPT_TVDBLOOKUP=$( optionvalue "tvdblookup=" "${DEF_TVDBLOOKUP}" )
+OPT_PRECMD=$( optionvalue "precmd=" "${DEF_PRECMD}" )
+OPT_POSTCMD=$( optionvalue "postcmd=" "${DEF_POSTCMD}" )
 
 #-------------------------------------------------------------------------------
 #Email notifications functions using ssmpt
@@ -185,13 +199,16 @@ if [ ! -f "$ORIGFILE" ]; then
     echo "tmpdir="
     echo "logdir="
     echo "dbpasswd="
+    echo "datefirst="
+    echo "tvdblookup="
+    echo "precmd"
+    echo "postcmd="
     echo ""
     echo "$PROG: file doesn't exist, aborting."
     quiterrorearly
 fi
 
 #-------------------------------------------------------------------------------
-#
 #split directory and filename
 #
 RECDIR=`dirname $ORIGFILE`
@@ -209,7 +226,6 @@ logfile="${OPT_LOGDIR}/${BASENAME}.log"
 echo "$PROG: Starting `date`" >>${logfile}
 
 #-------------------------------------------------------------------------------
-#
 # get required info from mythconverg db
 #
 DBHostName="localhost"
@@ -275,7 +291,14 @@ elif [ -z "`which  mkvmerge`" ]; then
     quiterror
 fi
 
-
+#
+# Execute precmd if specified
+# Note, this could be dangerous depending on script context
+# We should be running as user mythtv with limit permissions
+if [ -n "${OPT_PRECMD}" ]; then
+    `"${OPT_PRECMD}"`
+fi
+    
 #-------------------------------------------------------------------------------
 
 #tmp clip directory
@@ -365,6 +388,7 @@ done
 if [ -f ${RECDIR}/${BASENOEXT}.mkv ]; then
     rm -f ${RECDIR}/${BASENOEXT}.mkv
 fi
+#!!!ffmpeg -f concat -i mylist.txt -c copy output
 mkvmerge --append-mode track $mergestr -o ${RECDIR}/${BASENOEXT}.mkv &>>${logfile}
 
 #cleanup workdir
@@ -415,7 +439,7 @@ WHERE
 EOF
 
     # Archive original if requested
-    if [ "$OPT_FILEOP" == "replace" ]; then
+    if [ "${OPT_FILEOP}" == "replace" ]; then
         echo "$PROG: removing original file ${RECDIR}/${BASENAME}" >>${logfile}
         rm -f "${RECDIR}/${BASENAME}"
         ERROR=$?
@@ -464,9 +488,18 @@ local EPDATEFIRSTL
 local NOLOOKUPG 
 local NOLOOKUPL
 
-#Get global settings from config 
-EPDATEFIRSTG=$(cat "$CONFIGFILE" | grep "^episodedatefirst=\*$") 
-NOLOOKUPG=$(cat "$CONFIGFILE" | grep "^nolookup=\*$") 
+#Get global settings from command line or config
+if [ "${OPT_DATEFIRST}" = "yes" ]; then
+    EPDATEFIRSTG="*"
+else
+    EPDATEFIRSTG=$(cat "$CONFIGFILE" | grep "^episodedatefirst=\*$")
+fi
+
+if [ "${OPT_TVDBLOOKUP}" = "no" ]; then
+    NOLOOKUPG="*"
+else
+    NOLOOKUPG=$(cat "$CONFIGFILE" | grep "^nolookup=\*$") 
+fi
  
 #If output dir isn't specified, use default dir 
 if [ -z "$OUTDIR" ]; then 
@@ -555,6 +588,16 @@ if [ "$OPT_FILEOP" == "new" ]; then
         mkdir -p "${OUTDIR}"
     fi
     mv -f "${RECDIR}/${BASENOEXT}.mkv" "$OUTDIR/$OUTNAME.mkv"
+fi
+
+#-------------------------------------------------------------------------------
+
+#
+# Execute postcmd if specified
+# Note, this could be dangerous depending on script context
+# We should be running as user mythtv with limit permissions
+if [ -n "${OPT_POSTCMD}" ]; then
+    `"${OPT_POSTCMD}"`
 fi
 
 #-------------------------------------------------------------------------------

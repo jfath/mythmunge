@@ -40,6 +40,24 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
  Example of OPTIONSTR used to transcode to x264 video with mp3 audio  
    acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast  
   
+#Config file format  
+  
+nolookup=showtitle  
+episodedatefirst=showtitle  
+options=  
+  
+multiple lines of nolookup= and episodedatefirst= are allowed  
+episodedatefirst=* and nolookup=* are also allowed to force all  
+  
+episodedatefirst=someshowname  
+episodedatefirst=someothershowname  
+  
+nolookup=showtitlea  
+nolookup=showtitleb  
+nolookup=showtitlec  
+  
+options="fileop=new,newdir=\my\vids,remcom=no"  
+  
   
 #Release notes  
   
