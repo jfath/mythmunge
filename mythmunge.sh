@@ -1,7 +1,7 @@
 #!/bin/bash
 #===============================================================================
 # mythmunge.sh
-# Uses mythcommflag, ffmpeg, and mkvmerge to manipulate MythTV recordings
+# Uses mythcommflag and ffmpeg to manipulate MythTV recordings
 # !Note: Edit defaults in DefaultsEditBlock below as appropriate for your system!
 #
 # Jerry Fath jerryfath@gmail.com
@@ -35,7 +35,7 @@
 #   fileop=[archive|replace|new]
 #   newdir=/directory/for/new
 #   remcom=[yes|no]
-#   filetype=
+#   fileformat=
 #   vcodec=
 #   vcodecargs=
 #   acodec=
@@ -66,7 +66,7 @@
 # acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast
 #
 # TODO:
-# !!!Allow user to specify other containers mp4, etc.
+# !!!(test) allow user to specify other containers mp4, etc.
 # !!!Avoid duplicate episode numbers if lookup fails
 # !!!Use last two digits of year as season and mmdd as episode if lookup fails
 # !!!(test) allow setting episodedatefirst and nolookup in defaults/command line/config file
@@ -87,7 +87,7 @@ DEF_CFGFILE="${HOME}/${PROGNOEXT}/${PROGNOEXT}.cfg"
 DEF_FILEOP="new"
 DEF_NEWDIR="${HOME}/${PROGNOEXT}/DVR"
 DEF_REMCOM="no"
-DEF_FILETYPE="mkv"
+DEF_FILEFORMAT="mkv"
 DEF_NOTIFY="none"
 DEF_VCODEC="copy"
 DEF_VCODECARGS=""
@@ -134,7 +134,7 @@ CFGOPTIONSTR="`grep '^options=' "${OPT_CFGFILE}"`"
 OPT_FILEOP=$( optionvalue "fileop=" "${DEF_FILEOP}" )
 OPT_NEWDIR=$( optionvalue "newdir=" "${DEF_NEWDIR}" )
 OPT_REMCOM=$( optionvalue "remcom=" "${DEF_REMCOM}" )
-OPT_FILETYPE=$( optionvalue "filetype=" "${DEF_FILETYPE}" )
+OPT_FILEFORMAT=$( optionvalue "fileformat=" "${DEF_FILEFORMAT}" )
 OPT_ACODEC=$( optionvalue "acodec=" "${DEF_ACODEC}" )
 OPT_ACODECARGS=$( optionvalue "acodecargs=" "${DEF_ACODECARGS}" )
 OPT_VCODEC=$( optionvalue "vcodec=" "${DEF_VCODEC}" )
@@ -286,9 +286,6 @@ fi
 if [ -z "`which ffmpeg`" ]; then
     echo "$PROG: FFMpeg not present in the path. Adjust environment or install ffmpeg" >>${logfile}
     quiterror
-elif [ -z "`which  mkvmerge`" ]; then
-    echo "$PROG: mkvmerge is not present in the path. Adjust environment or install mkvtoolnix" >>${logfile}
-    quiterror
 fi
 
 #
@@ -302,9 +299,8 @@ fi
 #-------------------------------------------------------------------------------
 
 #tmp clip directory
-workdir="$OPT_TMPDIR"
-if [ -z "`ls "${workdir}"`" ]; then
-    mkdir -p "${workdir}"
+if [ -z "`ls "${OPT_TMPDIR}"`" ]; then
+    mkdir -p "${OPT_TMPDIR}"
 fi
 
 
@@ -337,7 +333,8 @@ else
     sed 's/-/ /g' | sed 's/^\|$/-/g' | sed 's/,/-/g'`
 fi
 
-echo "$PROG: ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss STARTFRAME -t DURATION ${workdir}/${BASENOEXT}_clip#.mkv" >>${logfile}
+#!!!Always use matroska for clip containers or use specified file format??
+echo "$PROG: ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss STARTFRAME -t DURATION ${OPT_TMPDIR}/${BASENOEXT}_clip#.mkv" >>${logfile}
 
 clipcount=0
 for i in ${CUTLIST}
@@ -366,33 +363,47 @@ do
 	end=$(echo "scale=8; $end / $fps" | bc -l)
 	duration=`echo "$end - $start" | bc -l`	
         printf -v clipstr "%03d" ${clipcount}
-	ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss $start -t $duration ${workdir}/${BASENOEXT}_${clipstr}.mkv &>>${logfile}
+	ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss $start -t $duration ${OPT_TMPDIR}/${BASENOEXT}_${clipstr}.mkv &>>${logfile}
     elif [ -z "$end" ]; then
 	clipcount=$((++clipcount))
         printf -v clipstr "%03d" ${clipcount}
-        ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss ${start} ${workdir}/${BASENOEXT}_${clipstr}.mkv &>>${logfile}
+        ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss ${start} ${OPT_TMPDIR}/${BASENOEXT}_${clipstr}.mkv &>>${logfile}
     fi
 
 done
 
-mergestr=""
-for i in `ls ${workdir}/${BASENOEXT}_* | sort`
+#!!!
+#mergestr=""
+#for i in `ls ${OPT_TMPDIR}/${BASENOEXT}_* | sort`
+#do
+#    if [ -z "$mergestr" ]; then
+#	mergestr="$i"
+#	continue
+#    fi
+#    mergestr="$mergestr +$i"
+#done
+#
+#if [ -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} ]; then
+#    rm -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}
+#fi
+#
+#mkvmerge --append-mode track $mergestr -o ${RECDIR}/${BASENOEXT}.mkv &>>${logfile}
+
+echo "" >"${OPT_TMPDIR}/${BASENOEXT}.lst"
+for i in `ls ${OPT_TMPDIR}/${BASENOEXT}_* | sort`
 do
-    if [ -z "$mergestr" ]; then
-	mergestr="$i"
-	continue
-    fi
-    mergestr="$mergestr +$i"
+    echo "$i" >"${OPT_TMPDIR}/${BASENOEXT}.lst"
 done
 
-if [ -f ${RECDIR}/${BASENOEXT}.mkv ]; then
-    rm -f ${RECDIR}/${BASENOEXT}.mkv
+if [ -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} ]; then
+    rm -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}
 fi
-#!!!ffmpeg -f concat -i mylist.txt -c copy output
-mkvmerge --append-mode track $mergestr -o ${RECDIR}/${BASENOEXT}.mkv &>>${logfile}
 
-#cleanup workdir
-rm -f ${workdir}/*.mkv
+ffmpeg -f concat -i "${OPT_TMPDIR}/${BASENOEXT}.lst" -c copy ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}
+
+#cleanup OPT_TMPDIR
+rm -f ${OPT_TMPDIR}/*.mkv
+rm -f ${OPT_TMPDIR}/*.lst
 
 #-------------------------------------------------------------------------------
 #
@@ -404,7 +415,7 @@ if [ "$OPT_FILEOP" != "new" ]; then
     mythutil --chanid $dbchanid --starttime "$dbstarttime" --clearcutlist &>>${logfile}
 
     #we'll need a new filesize to update the db with
-    filesize=$(du ${RECDIR}/${BASENOEXT}.mkv | awk '{print $1}') 
+    filesize=$(du ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} | awk '{print $1}') 
 
     #update db with new filesize and filename
     cat <<EOF | $mysqlconnect
@@ -413,7 +424,7 @@ UPDATE
 SET
 	cutlist = 0,
 	filesize = ${filesize},
-	basename = "${BASENOEXT}.mkv"
+	basename = "${BASENOEXT}.${OPT_FILEFORMAT}"
 WHERE
 	chanid = ${dbchanid} AND
 	starttime = "${dbstarttime}";
@@ -473,7 +484,7 @@ tv_lookup ()
 
 #Default are only used if global OUTDIR and/or OUTNAME are not set before calling
 local DEFOUTDIR="$OPT_NEWDIR"
-local DEFOUTNAME="${PROGNOEXT}-output.mkv"
+local DEFOUTNAME="${PROGNOEXT}-output.${OPT_FILEFORMAT}"
 
 # Config file format 
 # nolookup=showtitle 
@@ -580,14 +591,14 @@ if [ "$OPT_FILEOP" == "new" ]; then
         OUTDIR="$OPT_NEWDIR"
     fi
     if [ -z "$OUTNAME" ]; then 
-        OUTNAME="${BASENOEXT}.mkv"
+        OUTNAME="${BASENOEXT}.${OPT_FILEFORMAT}"
     fi
     tv_lookup
-    echo "$PROG: moving new file to $OUTDIR/$OUTNAME.mkv" >>${logfile}
+    echo "$PROG: moving new file to $OUTDIR/$OUTNAME.${OPT_FILEFORMAT}" >>${logfile}
     if [ -z "`ls "${OUTDIR}"`" ]; then
         mkdir -p "${OUTDIR}"
     fi
-    mv -f "${RECDIR}/${BASENOEXT}.mkv" "$OUTDIR/$OUTNAME.mkv"
+    mv -f "${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}" "$OUTDIR/$OUTNAME.${OPT_FILEFORMAT}"
 fi
 
 #-------------------------------------------------------------------------------
