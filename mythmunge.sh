@@ -30,8 +30,8 @@
 # Example MythTV user job:
 # mythmunge.sh "%DIR%/%FILE%" "fileop=new,newdir=/mnt/VidTV/DVR"
 #
-# Usage: mythmunge.sh /recpath/recfile [optionstr]
-# optionstr is a comma delimited list of options
+# Usage: mythmunge.sh /recpath/recfile [options]
+# options is a string of comma delimited list of options
 #   fileop=[archive|replace|new]
 #   newdir=/directory/for/new
 #   remcom=[yes|no]
@@ -62,15 +62,13 @@
 #
 #newdir= is required if fileop is 'new'
 #
-# Example of OPTIONSTR used to transcode to x264 video with mp3 audio
+# Example of OPTIONS used to transcode to x264 video with mp3 audio
 # acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast
 #
 # TODO:
-# !!!(test) allow user to specify other containers mp4, etc.
 # !!!Avoid duplicate episode numbers if lookup fails
 # !!!Use last two digits of year as season and mmdd as episode if lookup fails
-# !!!(test) allow setting episodedatefirst and nolookup in defaults/command line/config file
-# !!!(test) allow pre command and post command
+# !!!Check problem with last segment when removing commercials
 
 #===============================================================================
 
@@ -211,9 +209,12 @@ fi
 #-------------------------------------------------------------------------------
 #split directory and filename
 #
+#!!!Get this from original filename
+ORIGSUFFIX=".ts"
+
 RECDIR=`dirname $ORIGFILE`
 BASENAME=`basename $ORIGFILE`
-BASENOEXT=`basename $BASENAME .mpg`
+BASENOEXT=`basename $BASENAME ${ORIGSUFFIX}`
 ARCHIVEDIR="$RECDIR/archive"
 
 #
@@ -293,7 +294,7 @@ fi
 # Note, this could be dangerous depending on script context
 # We should be running as user mythtv with limit permissions
 if [ -n "${OPT_PRECMD}" ]; then
-    `"${OPT_PRECMD}"`
+    eval ${OPT_PRECMD}
 fi
     
 #-------------------------------------------------------------------------------
@@ -372,28 +373,12 @@ do
 
 done
 
-#!!!
-#mergestr=""
-#for i in `ls ${OPT_TMPDIR}/${BASENOEXT}_* | sort`
-#do
-#    if [ -z "$mergestr" ]; then
-#	mergestr="$i"
-#	continue
-#    fi
-#    mergestr="$mergestr +$i"
-#done
-#
-#if [ -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} ]; then
-#    rm -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}
-#fi
-#
-#mkvmerge --append-mode track $mergestr -o ${RECDIR}/${BASENOEXT}.mkv &>>${logfile}
-
-echo "" >"${OPT_TMPDIR}/${BASENOEXT}.lst"
+echo "#start of list: ${OPT_TMPDIR}/${BASENOEXT}_###" >"${OPT_TMPDIR}/${BASENOEXT}.lst"
 for i in `ls ${OPT_TMPDIR}/${BASENOEXT}_* | sort`
 do
-    echo "$i" >"${OPT_TMPDIR}/${BASENOEXT}.lst"
+    echo "file '$i'" >>"${OPT_TMPDIR}/${BASENOEXT}.lst"
 done
+echo "#end of list" >>"${OPT_TMPDIR}/${BASENOEXT}.lst"
 
 if [ -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} ]; then
     rm -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}
@@ -598,7 +583,8 @@ if [ "$OPT_FILEOP" == "new" ]; then
     if [ -z "`ls "${OUTDIR}"`" ]; then
         mkdir -p "${OUTDIR}"
     fi
-    mv -f "${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}" "$OUTDIR/$OUTNAME.${OPT_FILEFORMAT}"
+    EXTVAR_NEWFILE="$OUTDIR/$OUTNAME.${OPT_FILEFORMAT}"
+    mv -f "${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}" "${EXTVAR_NEWFILE}"
 fi
 
 #-------------------------------------------------------------------------------
@@ -607,8 +593,9 @@ fi
 # Execute postcmd if specified
 # Note, this could be dangerous depending on script context
 # We should be running as user mythtv with limit permissions
+#!!!Need to make EXTVAR_NEWFILE available to postcmd
 if [ -n "${OPT_POSTCMD}" ]; then
-    `"${OPT_POSTCMD}"`
+    eval ${OPT_POSTCMD}
 fi
 
 #-------------------------------------------------------------------------------
