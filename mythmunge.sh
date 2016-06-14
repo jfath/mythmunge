@@ -1,24 +1,30 @@
 #!/bin/bash
-#
+#===============================================================================
 # mythmunge.sh
+# Uses mythcommflag, ffmpeg, and mkvmerge to manipulate MythTV recordings
 # !Note: Edit defaults in DefaultsEditBlock below as appropriate for your system!
 #
-# Original script by:
-# Ian Thiele
-# icthiele@gmail.com
+# Jerry Fath jerryfath@gmail.com
+# Based on a script by: Ian Thiele icthiele@gmail.com
+# 
+#Copyright (c) 2016 Jerry Fath, Ian Thiele
 #
-# Uses mythcommflag, ffmpeg, and mkvmerge to cut commercials out of recorded files
+#Permission is hereby granted, free of charge, to any person obtaining a copy of this
+#software and associated documentation files (the "Software"), to deal in the Software
+#without restriction, including without limitation the rights to use, copy, modify,
+#merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+#permit persons to whom the Software is furnished to do so, subject to the following
+#conditions:
 #
-# Modified 2012/6/27 jfath
-# Additional code used to archive original recording, or produce new file in proper Title - SxxExx format stored in a user
-# specified directory
+#The above copyright notice and this permission notice shall be included in all copies
+#or substantial portions of the Software.
 #
-# Modified 2014/7/6 jfath
-# Added email notification using ssmtp
-#
-# Modified 2016/6/8 jfath
-# Changed to optionstr arguement format to allow additional command
-# line options
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+#INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+#PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+#LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT
+#OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+#DEALINGS IN THE SOFTWARE.
 #
 #
 # Example MythTV user job:
@@ -61,18 +67,17 @@
 # !!!allow setting episodedatefirst and nolookup in defaults/command line/config file
 # !!!allow pre command and post command
 
-#=========================================================================
+#===============================================================================
 
 #
-# get script name for later use
+# get command line args for later use and use in defaults
 #
 PROG=$(basename $0)
 PROGNOEXT=$(basename $0 .sh)
+ORIGFILE="$1"
+OPTIONSTR="$2"
 
-#
-#Set these to desired defaults
-#
-#DefaultsEditBlock---------------------------------------------
+#DefaultsEditBlock (edit these values as appropriate for your system) ==========
 DEF_CFGFILE="${HOME}/${PROGNOEXT}/${PROGNOEXT}.cfg"
 DEF_FILEOP="new"
 DEF_NEWDIR="${HOME}/${PROGNOEXT}/DVR"
@@ -86,14 +91,10 @@ DEF_EMAIL="user@emailserver.com"
 DEF_TMPDIR="${HOME}/${PROGNOEXT}/tmp"
 DEF_LOGDIR="${HOME}/${PROGNOEXT}/log"
 DEF_DBPASSWD="mythtv"
-#DefaultsEditBlock---------------------------------------------
+#DefaultsEditBlock==============================================================
 
-#
-# Store command line args
-#
-ORIGFILE="$1"
-OPTIONSTR="$2"
 
+#-------------------------------------------------------------------------------
 #
 # Parse options from OPTIONSTR and/or config file
 # Precedence: command line, config file, default
@@ -134,7 +135,7 @@ OPT_LOGDIR=$( optionvalue "logdir=" "${DEF_LOGDIR}" )
 OPT_DBPASSWD=$( optionvalue "dbpasswd=" "${DEF_DBPASSWD}" )
 
 
-#
+#-------------------------------------------------------------------------------
 #Email notifications functions using ssmpt
 #
 donotify() {
@@ -165,7 +166,7 @@ quitsuccess() {
   exit 0
 }
 
-#
+#-------------------------------------------------------------------------------
 #Check usage
 #
 if [ ! -f "$ORIGFILE" ]; then
@@ -189,6 +190,7 @@ if [ ! -f "$ORIGFILE" ]; then
     quiterrorearly
 fi
 
+#-------------------------------------------------------------------------------
 #
 #split directory and filename
 #
@@ -206,6 +208,7 @@ logfile="${OPT_LOGDIR}/${BASENAME}.log"
 #start log file with date header
 echo "$PROG: Starting `date`" >>${logfile}
 
+#-------------------------------------------------------------------------------
 #
 # get required info from mythconverg db
 #
@@ -271,6 +274,9 @@ elif [ -z "`which  mkvmerge`" ]; then
     echo "$PROG: mkvmerge is not present in the path. Adjust environment or install mkvtoolnix" >>${logfile}
     quiterror
 fi
+
+
+#-------------------------------------------------------------------------------
 
 #tmp clip directory
 workdir="$OPT_TMPDIR"
@@ -364,6 +370,7 @@ mkvmerge --append-mode track $mergestr -o ${RECDIR}/${BASENOEXT}.mkv &>>${logfil
 #cleanup workdir
 rm -f ${workdir}/*.mkv
 
+#-------------------------------------------------------------------------------
 #
 # If we are replacing or archiving the MythTV file.  We need to update the DB
 #
@@ -407,7 +414,7 @@ WHERE
 
 EOF
 
-    # Archive original unless OPT_FILEOP is set to replace
+    # Archive original if requested
     if [ "$OPT_FILEOP" == "replace" ]; then
         echo "$PROG: removing original file ${RECDIR}/${BASENAME}" >>${logfile}
         rm -f "${RECDIR}/${BASENAME}"
@@ -425,6 +432,7 @@ EOF
     fi
 fi
 
+#-------------------------------------------------------------------------------
 
 #
 # Function to look up TV season and episode information
@@ -525,6 +533,7 @@ fi
 
 }
 
+#-------------------------------------------------------------------------------
 #
 # If we are keeping the original MythTV file, we want to rename th commercial-less
 # file based on the show title and episode, then move the file to a new directory
@@ -548,6 +557,7 @@ if [ "$OPT_FILEOP" == "new" ]; then
     mv -f "${RECDIR}/${BASENOEXT}.mkv" "$OUTDIR/$OUTNAME.mkv"
 fi
 
+#-------------------------------------------------------------------------------
 echo "$PROG: Completed successfully `date`" >>${logfile}
 
 quitsuccess

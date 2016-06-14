@@ -1,5 +1,5 @@
 # mythmunge
-MythTV user job shell script to remove commercials / transcode / copy / etc. recordings  
+MythTV user job bash script to remove commercials / transcode / copy / etc. recordings  
 
 Based on an original script by: Ian Thiele icthiele@gmail.com  
 
@@ -39,3 +39,17 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
  Example of OPTIONSTR used to transcode to x264 video with mp3 audio  
    acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast  
   
+  
+#Release notes  
+  
+Modified 2012/6/27 jfath  
+ Additional code used to archive original recording, or produce new file in proper Title - SxxExx format stored in a user  
+ specified directory  
+  
+ Modified 2014/7/6 jfath  
+ Added email notification using ssmtp  
+  
+ Modified 2016/6/8 jfath  
+ Changed to optionstr arguement format to allow additional command  
+ line options  
+
