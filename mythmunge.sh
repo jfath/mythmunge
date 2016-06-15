@@ -3,11 +3,13 @@
 # mythmunge.sh
 # Uses mythcommflag and ffmpeg to manipulate MythTV recordings
 # !Note: Edit defaults in DefaultsEditBlock below as appropriate for your system!
+# Dependencies: mythcommflag, mythutil, ffmpeg (>= v1.1), ssmtp(optional), curl and agrep
 #
-# Jerry Fath jerryfath@gmail.com
-# Based on a script by: Ian Thiele icthiele@gmail.com
+# Jerry Fath jerryfath at gmail dot com
+# Based on a script by: Ian Thiele icthiele at gmail dot com
+# TheTVDB lookup code base on MythSExx by Adam Outler outleradam at hotmail dot com
 # 
-#Copyright (c) 2016 Jerry Fath, Ian Thiele
+#Copyright (c) 2016 Jerry Fath, Ian Thiele, Adam Outler
 #
 #Permission is hereby granted, free of charge, to any person obtaining a copy of this
 #software and associated documentation files (the "Software"), to deal in the Software
@@ -73,6 +75,11 @@ DEF_NAMEFORMAT="yyyy-mm-dd"
 DEF_FOLDERFORMAT="/t/s"
 DEF_PRECMD=""
 DEF_POSTCMD=""
+#Internet access Timeout in seconds: Default Timeout=50 
+DEF_TVDBTimeout=50
+#the following line contains the API key from www.TheTvDb.Com. Default: 6DF511BB2A64E0E9
+DEF_TVDBAPIkey=6DF511BB2A64E0E9
+
 #== DefaultsEditBlock===========================================================
 
 
@@ -122,6 +129,9 @@ OPT_NAMEFORMAT=$( optionvalue "nameformat=" "${DEF_NAMEFORMAT}" )
 OPT_FOLDERFORMAT=$( optionvalue "folderformat=" "${DEF_FOLDERFORMAT}" )
 OPT_PRECMD=$( optionvalue "precmd=" "${DEF_PRECMD}" )
 OPT_POSTCMD=$( optionvalue "postcmd=" "${DEF_POSTCMD}" )
+OPT_TVDBTIMEOUT=$( optionvalue "tvdbtimeout=" "${DEF_TVDBTIMEOUT}" )
+OPT_TVDBAPIKEY=$( optionvalue "tvdbapikey=" "${DEF_TVDBAPIKEY}" )
+
 
 #-------------------------------------------------------------------------------
 #Email notifications functions using ssmpt
@@ -215,10 +225,10 @@ dbchanid=`echo "select chanid from recorded where basename=\"$BASENAME\";" | $my
 dbstarttime=`echo "select starttime from recorded where basename=\"$BASENAME\";" | $mysqlconnect`
 #get title and subtitle recorded table
 dbtitle=`echo "select title from recorded where basename=\"$BASENAME\";" | $mysqlconnect`
-dbtitlesub=`echo "select subtitle from recorded where basename=\"$BASENAME\";" | $mysqlconnect`
+dbtitleep=`echo "select subtitle from recorded where basename=\"$BASENAME\";" | $mysqlconnect`
 
 echo "chanid: ${dbchanid}   dbstarttime: ${dbstarttime}"  >>${logfile}
-echo "dbtitle: ${dbtitle}   dbtitlesub: ${dbtitlesub}"  >>${logfile}
+echo "dbtitle: ${dbtitle}   dbtitleep: ${dbtitleep}"  >>${logfile}
 
 
 if [ -z "$dbchanid" ] || [ -z "$dbstarttime" ]
@@ -237,17 +247,17 @@ then
 fi
 
 
-#Keep title, titlesub, and start time in one variable for legacy purposes
+#Keep title, titleep, and start time in one variable for legacy purposes
 #Avoid re-writing code that expects that format
 #!!!Fix
-OUTNAME="${dbtitle}~${dbtitlesub}~${dbstarttime}"
+OUTNAME="${dbtitle}~${dbtitleep}~${dbstarttime}"
 
 #
 #Set email notifications text
 #
-MAILTEXTSTART="Subject:${PROGNOEXT} Start\n\n${PROGNOEXT} started processing ${dbtitle} ${dbtitlesub} ${dbstarttime} ${dbchanid}\n"
-MAILTEXT="Subject:${PROGNOEXT} Success\n\n${PROGNOEXT} successfully processed ${dbtitle} ${dbtitlesub} ${dbstarttime} ${dbchanid}\n"
-MAILTEXTERR="Subject:${PROGNOEXT} Fail\n\n${PROGNOEXT} error processing ${dbtitle} ${dbtitlesub} ${dbstarttime} ${dbchanid}\n"
+MAILTEXTSTART="Subject:${PROGNOEXT} Start\n\n${PROGNOEXT} started processing ${dbtitle} ${dbtitleep} ${dbstarttime} ${dbchanid}\n"
+MAILTEXT="Subject:${PROGNOEXT} Success\n\n${PROGNOEXT} successfully processed ${dbtitle} ${dbtitleep} ${dbstarttime} ${dbchanid}\n"
+MAILTEXTERR="Subject:${PROGNOEXT} Fail\n\n${PROGNOEXT} error processing ${dbtitle} ${dbtitleep} ${dbstarttime} ${dbchanid}\n"
 
 #
 #Send start notification if requested
@@ -357,7 +367,7 @@ if [ -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} ]; then
     rm -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}
 fi
 
-ffmpeg -f concat -i "${OPT_TMPDIR}/${BASENOEXT}.lst" -c copy ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}
+ffmpeg -f concat -i "${OPT_TMPDIR}/${BASENOEXT}.lst" -c copy ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} &>>${logfile}
 
 #cleanup OPT_TMPDIR
 rm -f ${OPT_TMPDIR}/*.mkv
@@ -425,8 +435,130 @@ EOF
     fi
 fi
 
+#
+#
 #-------------------------------------------------------------------------------
+#Code from MythSExx
+#
+#Usage: titlesub2se "show name" "episode name"
+#Output: sxxexx string (s00e00 if not found)
+#Dependencies: depends on "Curl" and "agrep"
+#
+titlesub2se ()
+{
+    local ARGSHOWNAME=$1
+    local ARGEPISODENAME=$2
+    
+    echo "TheTVDB SEARCH INITIATED AT `date`">>${logfile} 
+    
+    #Set episode name, dir, extension, and showname from the input parameters.
+    local ShowName=$ARGSHOWNAME
+    local epn=`echo $ARGEPISODENAME|sed 's/;.*//'|tr -d [:punct:]`
+    
+    #!!!Check for show translations relating to the show in question.
+    if [ -f $OPT_TMPDIR/showtranslations ]; then 
+        local showtranslation=`grep "$ShowName = " "$OPT_TMPDIR/showtranslations"|replace "$ShowName = " ""|replace "$OPT_TMPDIR/showtranslations" ""`		 
+        if [ "$showtranslation" != "$null" ];then 
+            ShowName=$showtranslation
+            echo "USER TRANSLATION: $ARGSHOWNAME = $ShowName">>${logfile}
+        elif [ "$showtranslation" = "$null" ];then
+            $showtranslation = "Inactive"
+        fi
+    fi
+    
+     
+    #####SEARCH FOR SHOW NAME#####
+    echo "SEARCHING: www.TheTvDb.com SHOW NAME: $ShowName EPISODE: $epn">>${logfile}
+    #download series info for show, parse into temporary text db- sid.txt shn.txt
+    local tvdbshowname=`echo $ShowName|replace " " "%20"`
+    
+    curl -s -m"$OPT_TVDBTIMEOUT" www.thetvdb.com/api/GetSeries.php?seriesname=$tvdbshowname>$OPT_TMPDIR/working.xml
+    cat $OPT_TMPDIR/working.xml | grep "<seriesid>"|replace "<seriesid>" ""|replace "</seriesid>" "">$OPT_TMPDIR/sid.txt
+    cat $OPT_TMPDIR/working.xml | grep "<SeriesName>"|replace "<SeriesName>" ""|replace "</SeriesName>" "">$OPT_TMPDIR/shn.txt
+    
+    #Use fuzzy logic to make the best match of the show name
+    local serieslinenumber=`agrep -1 -n "${showname:0:29}" $OPT_TMPDIR/shn.txt|sed 's/:.*//'|grep -m1 ^`
+    
+    #Get the seriesid based on the showname
+    local seriesid=`sed -n $serieslinenumber'p' $OPT_TMPDIR/sid.txt|grep -m1 ^`
+    local NewShowName=`sed -n $serieslinenumber'p' $OPT_TMPDIR/shn.txt|grep -m1 ^`
+    
+    #Create folder for database if it does not exist
+    if [ ! -d "$OPT_TMPDIR/$NewShowName" ]; then
+        mkdir $OPT_TMPDIR/"$NewShowName"
+        echo "creating home OPT_TMPDIR and log file">>$OPT_TMPDIR/"$logfile"
+    fi
+        echo "SEARCH FOUND:""$NewShowName" "ID#:" $seriesid >>${logfile}
+    
+    #If series ID is obtained, then get show information.
+    if [ "$seriesid" != "" ]; then
+    
+    #####GET SHOW INFORMATION#####
+    #Strip XML tags
+        seriesid=`echo $seriesid|tr -d "<seriesid>"|tr -d "</seriesid>"`
+    
+    #download series info for series id
+        curl -s -m"$OPT_TVDBTIMEOUT" "http://www.thetvdb.com/api/$OPT_TVDBAPIKEY/series/$seriesid/all/en.xml">$OPT_TMPDIR"/$NewShowName/$NewShowName.xml"
+    
+    #create a folder/file "database" Strip XML tags.  Series, Exx and Sxx are separated into different files
+        if [ -f "$OPT_TMPDIR/$NewShowName/$NewShowName.xml" ]; then 
+            cat "$OPT_TMPDIR/$NewShowName/$NewShowName.xml" | grep "<EpisodeName>"|replace "  <EpisodeName>" ""|replace "</EpisodeName>" ""|tr -d [:punct:]>$OPT_TMPDIR/"$NewShowName"/"$NewShowName".Ename.txt
+            cat $OPT_TMPDIR/"$NewShowName"/"$NewShowName".xml | grep "<SeasonNumber>"|replace "<SeasonNumber>" ""|replace "</SeasonNumber>" ""|replace " " "">$OPT_TMPDIR/"$NewShowName"/"$NewShowName".S.txt
+            cat $OPT_TMPDIR/"$NewShowName"/"$NewShowName".xml | grep "<EpisodeNumber>"|replace "<EpisodeNumber>" ""|replace "</EpisodeNumber>" ""|replace " " "">$OPT_TMPDIR/"$NewShowName"/"$NewShowName".E.txt
+        elif [ ! -f "$OPT_TMPDIR/$NewShowName/$NewShowName.xml" ]; then
+            echo "***FAILURE: curl -s -m$OPT_TVDBTIMEOUT http://www.thetvdb.com/api/$OPT_TVDBAPIKEY/series/$seriesid/all/en.xml">>${logfile}
+        fi
+    
+    #check if files were created and generate message
+        if [ -f $OPT_TMPDIR/"$NewShowName"/"$NewShowName".Ename.txt ]; then
+            echo "LOCAL DATABASE UPDATED:$OPT_TMPDIR/$NewShowName">>${logfile}
+        elif [ ! -f "$OPT_TMPDIR/$NewShowName/$NewShowName.Ename.txt" ]; then
+            echo "*** PERMISSION ERROR $OPT_TMPDIR/$NewShowName/">>${logfile}
+        fi
+    
+    
+    #####PROCESS SHOW INFORMATION#####
+    #grep use fuzzy logic to find the closest show name from the locally created database and return absolute episode number
+        local absolouteEpisodeNumber=`agrep -1 -n "${epn:0:29}" "$OPT_TMPDIR""/""$NewShowName""/""$NewShowName"".Ename.txt"|grep -m1 ^|sed 's/:.*//'`
+        echo DEFINED ABSOLOUTE EPISODE NUMBER: $absolouteEpisodeNumber>>${logfile}
+    
+    #if line match is obtained, then gather Sxx and Exx
+        if [ "$absolouteEpisodeNumber" !=  ""  ]; then
+            epn=`sed -n $absolouteEpisodeNumber'p' $OPT_TMPDIR/"$NewShowName"/"$NewShowName".Ename.txt|sed 's/;.*//'`
+    
+            #gather series and episode names from files created earlier.
+            local exx=`sed -n $absolouteEpisodeNumber'p' $OPT_TMPDIR/"$NewShowName"/"$NewShowName".E.txt`
+            local sxx=`sed -n $absolouteEpisodeNumber'p' $OPT_TMPDIR/"$NewShowName"/"$NewShowName".S.txt`
+    
+            # Single digit episode and show names are not allowed Ex and Sx replaced with Exx Sxx
+            if [ "$exx" -lt 10 ]; then 
+                exx=`echo e0$exx`
+            elif [ "$exx" -gt 9 ]; then 
+                exx=`echo e$exx`
+            fi
+            if [ "$sxx" -lt 10 ]; then 
+                sxx=`echo s0$sxx`
+            elif [ "$sxx" -gt 9 ]; then 
+                sxx=`echo s$sxx`
+            fi
+        fi
+        echo "EPISODE:$epn NUMBER:$absolouteEpisodeNumber $sxx$exx">>${logfile}
+        #if series id is not obtained
+        elif [ "$seriesid" == "" ]; then 
+        echo "series was not found the tvdb may be down try renaming $ARGSHOWNAME">>${logfile}
+    fi
+    
+ 
+    #Echo final result s##e## to be used by caller.  s00e00 is used to indicate 'not found'
+    if [ "$exx" = "" ]; then
+            echo s00e00
+    else
+            echo $sxx$exx
+    fi
+}
 
+
+#-------------------------------------------------------------------------------
 #
 # Function to look up TV season and episode information
 # Used to help rename when we are keeping the original MythTV file
@@ -498,12 +630,13 @@ else
         #grep a config file to see if we should do a lookup for this show 
         NOLOOKUPL=$(cat "$CONFIGFILE" | grep "^nolookup=$SHOWFIELD$") 
         if [ -z "$NOLOOKUPL" ] && [ -z "$NOLOOKUPG" ]; then 
-            #Get Season and Episode string 
+            #Get Season and Episode string
+            #!!!Add titlesub2se.sh as function within this script
             SXXEXX=$(titlesub2se.sh "$SHOWFIELD" "$EPFIELD") 
             SEASONFIELD=$(echo $SXXEXX | sed -e 's:S\([0-9]*\)E[0-9]*:\1:') 
         else 
-            SXXEXX="S99E99" 
-            SEASONFIELD="99" 
+            SXXEXX="S00E00" 
+            SEASONFIELD="00" 
         fi 
  
  
@@ -539,7 +672,7 @@ fi
 # If we are keeping the original MythTV file, we want to rename th commercial-less
 # file based on the show title and episode, then move the file to a new directory
 # A MythTV user job handles this by calling like:
-# mythmunge.sh "%DIR%/%FILE%" "fileop=new,newdir=/mnt/VidTV/DVR,title=%TITLE%,titlesub=%SUBTITLE%,starttime=%STARTTIME%"
+# mythmunge.sh "%DIR%/%FILE%" "fileop=new,newdir=/mnt/VidTV/DVR"
 #
 if [ "$OPT_FILEOP" == "new" ]; then
     # If requested, move new file to new directory rather than replacing Myth file and DB

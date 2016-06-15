@@ -5,7 +5,8 @@ Jerry Fath jerryfath@gmail.com
 Based on an original script by: Ian Thiele icthiele@gmail.com  
 
  **Installation:**  
-    Edit defaults in DefaultsEditBlock as appropriate for your system  
+    Edit defaults in DefaultsEditBlock as appropriate for your system
+    Create config file if needed  
     Add as a user job in MythTV  
  **Requires:**  
     mythcommflag, ffmpeg (greater than v1.1), ssmtp(optional)  
@@ -39,32 +40,32 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
   notify=[none|start|end|startend|error]  
    when to send job notification emails  
   
-  email=user@mailserver.com
+  email=user@mailserver.com  
    email address for notifications.  ssmpt must be installed and configured  
   
-  cfgfile=/dir/filename.cfg
+  cfgfile=/dir/filename.cfg  
    configuration file - see below for format  
   
-  tmpdir=/dir/sometmpdir
+  tmpdir=/dir/sometmpdir  
    working directory for temporary files  
   
-  logdir=/dir/alogdir
+  logdir=/dir/alogdir  
    log directory contains one log file for each video file processed  
   
-  dbpasswd=mysql_user_mythtv_password
+  dbpasswd=mysql_user_mythtv_password  
    mysql or mariadb password for the mythtv user  
   
-  tvdblookup=[yes|no]
+  tvdblookup=[yes|no]  
    specifies whether to attempt a tvdb lookup when naming a new file  
   
-  nameformat=[s00e00|s00e##|syyemmdd|yyyy-mm-dd]
-   the naming format used for a new file
-   if tvdblookup is 'yes' this is a fallback format to s##e##
-   s00e00 will simply use 00 as a placeholder for season and episode
-   s00e## will use season 00 and determine a unique ## for episode
-   syyemmdd will use the last two digits of the recording year as season and
-    month day as episode
-   yyyy-mm-dd will name as ShowName - YYYY-MM-DD - episode title.ext
+  nameformat=[s00e00|s00e##|syyemmdd|yyyy-mm-dd]  
+   the naming format used for a new file  
+   if tvdblookup is 'yes' this is a fallback format to s##e##  
+   s00e00 will simply use 00 as a placeholder for season and episode  
+   s00e## will use season 00 and determine a unique ## for episode  
+   syyemmdd will use the last two digits of the recording year as season and  
+    month day as episode  
+   yyyy-mm-dd will name as ShowName - YYYY-MM-DD - episode title.ext  
   
   folderformat=[/t|/s|/e/d]  
    the folder structure used for a new file  
@@ -72,13 +73,13 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
    These can be combined or omitted as desired  
    folderformat=/t/s would store a new file in the standard title/Season ## structure  
   
-  epdatefirst=[yes|no]
+  epdatefirst=[yes|no]  
    specifies whether to pu the date at the front or end the episode title  
   
-  precmd=bash command to execute before munge
+  precmd=bash command to execute before munge  
    a string which will be executed in a bash shell before processing begins  
   
-  postcmd=bash command to execute after munge
+  postcmd=bash command to execute after munge  
    a string which will be executed in a bash shell after processing begins  
    the new file can be referred to as %{NEWFILE} within the command string  
   
@@ -87,9 +88,9 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
    mythmunge.sh "%DIR%/%FILE%" "fileop=new,remcom=yes,newdir=/mnt/VidTV/DVR"  
   
  Example of OPTION used to transcode to x264 video with mp3 audio  
-   acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast
+   acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast  
    
- Example of OPTION used to log a message including the new file name as a postcmd
+ Example of OPTION used to log a message including the new file name as a postcmd  
    "fileop=new,newdir=/my/vids,postcmd=echo \"finished %{NEWFILE}\" >/home/mongo/mythmunge/post.log"  
   
   
@@ -111,6 +112,21 @@ nolookup=showtitlec
   
 options="fileop=new,newdir=\my\vids,remcom=no"  
   
+TheTVDB Show Name Translation
+ The user may elect to create a file in the TitleSub2SE/ working folder which will then translate any recorded
+ show name into the desired show name.  This is useful for adding a year to distinguish between a new series
+ and an older series and/or typos in your guide data.  By default it should be called "showtranslations" and
+ by default it will be in your home/username/titlesub2se folder.  showtranslations is not needed by most users
+ and the file should only be created if it is needed. Under most circumstances, the integrated fuzzy logic 
+ will be sufficient to translate the guide name to the TvDb name, however showtranslations is available to 
+ improve accuracy to 100%. The format of showtranslations is as follows:
+
+#############################################################
+My Guide Show Title = www.TheTvDb.com Show Title            #
+Battlestar Gallactica = Battlestar Gallactica (2003)        # 
+Millionaire = Who Wants To Be A Millionaire                 #
+Aqua teen Hungerforce = Aqua Teen Hunger Force              #
+#############################################################
   
 #Release notes  
   
