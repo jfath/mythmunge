@@ -76,7 +76,6 @@ DEF_PRECMD=""
 DEF_POSTCMD=""
 DEF_TVDBTIMEOUT="50"
 DEF_TVDBAPIKEY="6DF511BB2A64E0E9"
-
 #== DefaultsEditBlock===========================================================
 
 
@@ -272,9 +271,10 @@ fi
 #
 # Execute precmd if specified
 # Note, this could be dangerous depending on script context
-# We should be running as user mythtv with limit permissions
+# We should be running as user mythtv with limited permissions
 if [ -n "${OPT_PRECMD}" ]; then
-    eval ${OPT_PRECMD}
+    EVALSTR=`echo ${OPT_PRECMD} | sed 's/%{/${/g'`
+    eval ${EVALSTR}
 fi
     
 #-------------------------------------------------------------------------------
@@ -569,105 +569,104 @@ titlesub2se ()
 #
 tv_lookup ()
 {
-#
-# Uses globals:  OUTNAME, OUTDIR, PROGNOEXT
-# Sets globals: OUTNAME, OUTDIR
-# Uses config file: OPT_CFGFILE
-#
-#
-
-#Default are only used if global OUTDIR and/or OUTNAME are not set before calling
-local DEFOUTDIR="$OPT_NEWDIR"
-local DEFOUTNAME="${PROGNOEXT}-output.${OPT_FILEFORMAT}"
-
-# Config file format 
-# nolookup=showtitle 
-# episodedatefirst=showtitle 
-# 
-# nolookup will prevent season/episode lookup for a show or globally if * wildcard is specified.  S99E99 will be used in file name 
-# episodedatefirst will prepend @RecDate to the episode name in order to force sorting by date if S99E99.  The * wildcard can be used to force all 
-local CONFIGFILE="$OPT_CFGFILE"
-
-local EPDATEFIRSTG 
-local EPDATEFIRSTL 
-local NOLOOKUPG 
-local NOLOOKUPL
-
-#Get global settings from command line or config
-if [ "${OPT_EPDATEFIRST}" = "yes" ]; then
-    EPDATEFIRSTG="*"
-else
-    EPDATEFIRSTG=$(cat "$CONFIGFILE" | grep "^episodedatefirst=\*$")
-fi
-
-if [ "${OPT_TVDBLOOKUP}" = "no" ]; then
-    NOLOOKUPG="*"
-else
-    NOLOOKUPG=$(cat "$CONFIGFILE" | grep "^nolookup=\*$") 
-fi
- 
-#If output dir isn't specified, use default dir 
-if [ -z "$OUTDIR" ]; then 
-    OUTDIR="$DEFOUTDIR" 
-fi 
-   
-#Generate ouput file and directory names 
-local SHOWFIELD="" 
-local EPFIELD="" 
-local RECFIELD="" 
-local SXXEXX="" 
-local SEASONFIELD="" 
-local CHKFORM=$(echo "$OUTNAME" | grep "\~") 
-if [ -z "$OUTNAME" ]; then 
-    #If outname not specified use default
-    OUTNAME="$DEFOUTNAME"
-else 
-    #Replace all bad filename characters 
-    OUTNAME=$(echo $OUTNAME | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
-    #If no ~ delimeters use output name as passed 
-    if [ ! -z "$CHKFORM" ]; then 
-        #Split OUTNAME into components 
-        SHOWFIELD=$(echo $OUTNAME | gawk 'BEGIN { FS = "~" } {print $1}') 
-        EPFIELD=$(echo $OUTNAME | gawk 'BEGIN { FS = "~" } {print $2}') 
-        RECFIELD=$(echo $OUTNAME | gawk 'BEGIN { FS = "~" } {print $3}') 
- 
-        #grep a config file to see if we should do a lookup for this show 
-        NOLOOKUPL=$(cat "$CONFIGFILE" | grep "^nolookup=$SHOWFIELD$") 
-        if [ -z "$NOLOOKUPL" ] && [ -z "$NOLOOKUPG" ]; then 
-            #Get Season and Episode string
-            SXXEXX=$( titlesub2se "$SHOWFIELD" "$EPFIELD" )
-            SEASONFIELD=$(echo $SXXEXX | sed -e 's:s\([0-9]*\)e[0-9]*:\1:') 
-        else 
-            SXXEXX="s00e00" 
-            SEASONFIELD="00" 
-        fi 
- 
- 
-        #Add record date to episode in various ways 
-        EPDATEFIRSTL=$(cat "$CONFIGFILE" | grep "^episodedatefirst=$SHOWFIELD$") 
-        if [ -z "$EPDATEFIRSTG" ] && [ -z "$EPDATEFIRSTL" ]; then 
-            #Blank episodes don't sort well in WMC so use @recorddate as apname 
-            if [ -z "$EPFIELD" ]; then 
-                EPFIELD="@$RECFIELD" 
-            else 
-                EPFIELD="$EPFIELD - [$RECFIELD]" 
-            fi 
-        else 
-            #Add the record date to the front of the episode name so shows will 
-            #sort alphabetically by date if season and episode don't look up 
-            if [ -z "$EPFIELD" ]; then 
-                EPFIELD="@$RECFIELD" 
-            else 
-                EPFIELD="@$RECFIELD $EPFIELD" 
-            fi 
-        fi 
- 
-        #Build output name from components 
-        OUTNAME="$SHOWFIELD - $SXXEXX - $EPFIELD" 
-        OUTDIR="$OUTDIR/$SHOWFIELD/Season $SEASONFIELD" 
+    #
+    # Uses globals:  OUTNAME, OUTDIR, PROGNOEXT
+    # Sets globals: OUTNAME, OUTDIR
+    # Uses config file: OPT_CFGFILE
+    #
+    #
+    
+    #Default are only used if global OUTDIR and/or OUTNAME are not set before calling
+    local DEFOUTDIR="$OPT_NEWDIR"
+    local DEFOUTNAME="${PROGNOEXT}-output.${OPT_FILEFORMAT}"
+    
+    # Config file format 
+    # nolookup=showtitle 
+    # episodedatefirst=showtitle 
+    # 
+    # nolookup will prevent season/episode lookup for a show or globally if * wildcard is specified.  S99E99 will be used in file name 
+    # episodedatefirst will prepend @RecDate to the episode name in order to force sorting by date if S99E99.  The * wildcard can be used to force all 
+    local CONFIGFILE="$OPT_CFGFILE"
+    
+    local EPDATEFIRSTG 
+    local EPDATEFIRSTL 
+    local NOLOOKUPG 
+    local NOLOOKUPL
+    
+    #Get global settings from command line or config
+    if [ "${OPT_EPDATEFIRST}" = "yes" ]; then
+        EPDATEFIRSTG="*"
+    else
+        EPDATEFIRSTG=$(cat "$CONFIGFILE" | grep "^episodedatefirst=\*$")
+    fi
+    
+    if [ "${OPT_TVDBLOOKUP}" = "no" ]; then
+        NOLOOKUPG="*"
+    else
+        NOLOOKUPG=$(cat "$CONFIGFILE" | grep "^nolookup=\*$") 
+    fi
+     
+    #If output dir isn't specified, use default dir 
+    if [ -z "$OUTDIR" ]; then 
+        OUTDIR="$DEFOUTDIR" 
     fi 
-fi
-
+       
+    #Generate ouput file and directory names 
+    local SHOWFIELD="" 
+    local EPFIELD="" 
+    local RECFIELD="" 
+    local SXXEXX="" 
+    local SEASONFIELD="" 
+    local CHKFORM=$(echo "$OUTNAME" | grep "\~") 
+    if [ -z "$OUTNAME" ]; then 
+        #If outname not specified use default
+        OUTNAME="$DEFOUTNAME"
+    else 
+        #Replace all bad filename characters 
+        OUTNAME=$(echo $OUTNAME | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
+        #If no ~ delimeters use output name as passed 
+        if [ ! -z "$CHKFORM" ]; then 
+            #Split OUTNAME into components 
+            SHOWFIELD=$(echo $OUTNAME | gawk 'BEGIN { FS = "~" } {print $1}') 
+            EPFIELD=$(echo $OUTNAME | gawk 'BEGIN { FS = "~" } {print $2}') 
+            RECFIELD=$(echo $OUTNAME | gawk 'BEGIN { FS = "~" } {print $3}') 
+     
+            #grep a config file to see if we should do a lookup for this show 
+            NOLOOKUPL=$(cat "$CONFIGFILE" | grep "^nolookup=$SHOWFIELD$") 
+            if [ -z "$NOLOOKUPL" ] && [ -z "$NOLOOKUPG" ]; then 
+                #Get Season and Episode string
+                SXXEXX=$( titlesub2se "$SHOWFIELD" "$EPFIELD" )
+                SEASONFIELD=$(echo $SXXEXX | sed -e 's:s\([0-9]*\)e[0-9]*:\1:') 
+            else 
+                SXXEXX="s00e00" 
+                SEASONFIELD="00" 
+            fi 
+     
+     
+            #Add record date to episode in various ways 
+            EPDATEFIRSTL=$(cat "$CONFIGFILE" | grep "^episodedatefirst=$SHOWFIELD$") 
+            if [ -z "$EPDATEFIRSTG" ] && [ -z "$EPDATEFIRSTL" ]; then 
+                #Blank episodes don't sort well in WMC so use @recorddate as apname 
+                if [ -z "$EPFIELD" ]; then 
+                    EPFIELD="@$RECFIELD" 
+                else 
+                    EPFIELD="$EPFIELD - [$RECFIELD]" 
+                fi 
+            else 
+                #Add the record date to the front of the episode name so shows will 
+                #sort alphabetically by date if season and episode don't look up 
+                if [ -z "$EPFIELD" ]; then 
+                    EPFIELD="@$RECFIELD" 
+                else 
+                    EPFIELD="@$RECFIELD $EPFIELD" 
+                fi 
+            fi 
+     
+            #Build output name from components 
+            OUTNAME="$SHOWFIELD - $SXXEXX - $EPFIELD" 
+            OUTDIR="$OUTDIR/$SHOWFIELD/Season $SEASONFIELD" 
+        fi 
+    fi
 }
 
 #-------------------------------------------------------------------------------
@@ -699,7 +698,7 @@ fi
 #
 # Execute postcmd if specified
 # Note, this could be dangerous depending on script context
-# We should be running as user mythtv with limit permissions
+# We should be running as user mythtv with limited permissions
 # !!!Should this be sed 's/%{/${_/g' to limit access to certain vars??
 if [ -n "${OPT_POSTCMD}" ]; then
     EVALSTR=`echo ${OPT_POSTCMD} | sed 's/%{/${/g'`
