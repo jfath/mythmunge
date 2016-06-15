@@ -38,8 +38,7 @@
 #
 #
 # TODO:
-# !!!Avoid duplicate episode numbers if lookup fails
-# !!!Use last two digits of year as season and mmdd as episode if lookup fails
+# !!!Implement nameformat and folderformat
 # !!!Check problem with last segment when removing commercials
 
 #===============================================================================
@@ -281,8 +280,8 @@ fi
 #-------------------------------------------------------------------------------
 
 #tmp clip directory
-if [ -z "`ls "${OPT_TMPDIR}"`" ]; then
-    mkdir -p "${OPT_TMPDIR}"
+if [ -z "`ls "${OPT_TMPDIR}"/clips`" ]; then
+    mkdir -p "${OPT_TMPDIR}"/clips
 fi
 
 
@@ -316,7 +315,7 @@ else
 fi
 
 #!!!Always use matroska for clip containers or use specified file format??
-echo "$PROG: ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss STARTFRAME -t DURATION ${OPT_TMPDIR}/${BASENOEXT}_clip#.mkv" >>${logfile}
+echo "$PROG: ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss STARTFRAME -t DURATION ${OPT_TMPDIR}/clips/${BASENOEXT}_clip#.mkv" >>${logfile}
 
 clipcount=0
 for i in ${CUTLIST}
@@ -345,31 +344,30 @@ do
 	end=$(echo "scale=8; $end / $fps" | bc -l)
 	duration=`echo "$end - $start" | bc -l`	
         printf -v clipstr "%03d" ${clipcount}
-	ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss $start -t $duration ${OPT_TMPDIR}/${BASENOEXT}_${clipstr}.mkv &>>${logfile}
+	ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss $start -t $duration ${OPT_TMPDIR}/clips/${BASENOEXT}_${clipstr}.mkv &>>${logfile}
     elif [ -z "$end" ]; then
 	clipcount=$((++clipcount))
         printf -v clipstr "%03d" ${clipcount}
-        ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss ${start} ${OPT_TMPDIR}/${BASENOEXT}_${clipstr}.mkv &>>${logfile}
+        ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss ${start} ${OPT_TMPDIR}/clips/${BASENOEXT}_${clipstr}.mkv &>>${logfile}
     fi
 
 done
 
-echo "#start of list: ${OPT_TMPDIR}/${BASENOEXT}_###" >"${OPT_TMPDIR}/${BASENOEXT}.lst"
-for i in `ls ${OPT_TMPDIR}/${BASENOEXT}_* | sort`
+echo "#start of list: ${OPT_TMPDIR}/clips/${BASENOEXT}_###" >"${OPT_TMPDIR}/clips/${BASENOEXT}.lst"
+for i in `ls ${OPT_TMPDIR}/clips/${BASENOEXT}_* | sort`
 do
-    echo "file '$i'" >>"${OPT_TMPDIR}/${BASENOEXT}.lst"
+    echo "file '$i'" >>"${OPT_TMPDIR}/clips/${BASENOEXT}.lst"
 done
-echo "#end of list" >>"${OPT_TMPDIR}/${BASENOEXT}.lst"
+echo "#end of list" >>"${OPT_TMPDIR}/clips/${BASENOEXT}.lst"
 
 if [ -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} ]; then
     rm -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}
 fi
 
-ffmpeg -f concat -i "${OPT_TMPDIR}/${BASENOEXT}.lst" -c copy ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} &>>${logfile}
+ffmpeg -f concat -i "${OPT_TMPDIR}/clips/${BASENOEXT}.lst" -c copy ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} &>>${logfile}
 
-#cleanup OPT_TMPDIR
-rm -f ${OPT_TMPDIR}/*.mkv
-rm -f ${OPT_TMPDIR}/*.lst
+#cleanup OPT_TMPDIR/clips
+rm -f -r "${OPT_TMPDIR}/clips"
 
 #-------------------------------------------------------------------------------
 #
@@ -449,6 +447,11 @@ titlesub2se ()
     
     echo "TheTVDB SEARCH INITIATED AT `date`">>${logfile} 
     
+    #tmp working directory
+    if [ -z "`ls "${OPT_TMPDIR}"/tvdb`" ]; then
+        mkdir -p "${OPT_TMPDIR}"/tvdb
+    fi
+
     #Set episode name, dir, extension, and showname from the input parameters.
     local ShowName=$ARGSHOWNAME
     local epn=`echo $ARGEPISODENAME|sed 's/;.*//'|tr -d [:punct:]`
@@ -471,20 +474,20 @@ titlesub2se ()
     #download series info for show, parse into temporary text db- sid.txt shn.txt
     local tvdbshowname=`echo $ShowName|replace " " "%20"`
     
-    curl -s -m"$OPT_TVDBTIMEOUT" www.thetvdb.com/api/GetSeries.php?seriesname=$tvdbshowname>$OPT_TMPDIR/working.xml
-    cat $OPT_TMPDIR/working.xml | grep "<seriesid>"|replace "<seriesid>" ""|replace "</seriesid>" "">$OPT_TMPDIR/sid.txt
-    cat $OPT_TMPDIR/working.xml | grep "<SeriesName>"|replace "<SeriesName>" ""|replace "</SeriesName>" "">$OPT_TMPDIR/shn.txt
+    curl -s -m"$OPT_TVDBTIMEOUT" www.thetvdb.com/api/GetSeries.php?seriesname=$tvdbshowname>${OPT_TMPDIR}/tvdb/working.xml
+    cat ${OPT_TMPDIR}/tvdb/working.xml | grep "<seriesid>"|replace "<seriesid>" ""|replace "</seriesid>" "">${OPT_TMPDIR}/tvdb/sid.txt
+    cat ${OPT_TMPDIR}/tvdb/working.xml | grep "<SeriesName>"|replace "<SeriesName>" ""|replace "</SeriesName>" "">${OPT_TMPDIR}/tvdb/shn.txt
     
     #Use fuzzy logic to make the best match of the show name
-    local serieslinenumber=`agrep -1 -n "${showname:0:29}" $OPT_TMPDIR/shn.txt|sed 's/:.*//'|grep -m1 ^`
+    local serieslinenumber=`agrep -1 -n "${showname:0:29}" ${OPT_TMPDIR}/tvdb/shn.txt|sed 's/:.*//'|grep -m1 ^`
     
     #Get the seriesid based on the showname
-    local seriesid=`sed -n $serieslinenumber'p' $OPT_TMPDIR/sid.txt|grep -m1 ^`
-    local NewShowName=`sed -n $serieslinenumber'p' $OPT_TMPDIR/shn.txt|grep -m1 ^`
+    local seriesid=`sed -n $serieslinenumber'p' ${OPT_TMPDIR}/tvdb/sid.txt|grep -m1 ^`
+    local NewShowName=`sed -n $serieslinenumber'p' ${OPT_TMPDIR}/tvdb/shn.txt|grep -m1 ^`
     
     #Create folder for database if it does not exist
-    if [ ! -d "$OPT_TMPDIR/$NewShowName" ]; then
-        mkdir $OPT_TMPDIR/"$NewShowName"
+    if [ ! -d "${OPT_TMPDIR}/tvdb/$NewShowName" ]; then
+        mkdir ${OPT_TMPDIR}/tvdb/"$NewShowName"
         echo "creating home OPT_TMPDIR and log file">>${logfile}
     fi
     echo "SEARCH FOUND:""$NewShowName" "ID#:" $seriesid >>${logfile}
@@ -497,37 +500,37 @@ titlesub2se ()
         seriesid=`echo $seriesid|tr -d "<seriesid>"|tr -d "</seriesid>"`
         
         #download series info for series id
-        curl -s -m"${OPT_TVDBTIMEOUT}" "http://www.thetvdb.com/api/${OPT_TVDBAPIKEY}/series/$seriesid/all/en.xml">$OPT_TMPDIR"/$NewShowName/$NewShowName.xml"
+        curl -s -m"${OPT_TVDBTIMEOUT}" "http://www.thetvdb.com/api/${OPT_TVDBAPIKEY}/series/$seriesid/all/en.xml">${OPT_TMPDIR}/tvdb"/$NewShowName/$NewShowName.xml"
         
         #create a folder/file "database" Strip XML tags.  Series, Exx and Sxx are separated into different files
-        if [ -f "$OPT_TMPDIR/$NewShowName/$NewShowName.xml" ]; then 
-            cat "$OPT_TMPDIR/$NewShowName/$NewShowName.xml" | grep "<EpisodeName>"|replace "  <EpisodeName>" ""|replace "</EpisodeName>" ""|tr -d [:punct:]>$OPT_TMPDIR/"$NewShowName"/"$NewShowName".Ename.txt
-            cat $OPT_TMPDIR/"$NewShowName"/"$NewShowName".xml | grep "<SeasonNumber>"|replace "<SeasonNumber>" ""|replace "</SeasonNumber>" ""|replace " " "">$OPT_TMPDIR/"$NewShowName"/"$NewShowName".S.txt
-            cat $OPT_TMPDIR/"$NewShowName"/"$NewShowName".xml | grep "<EpisodeNumber>"|replace "<EpisodeNumber>" ""|replace "</EpisodeNumber>" ""|replace " " "">$OPT_TMPDIR/"$NewShowName"/"$NewShowName".E.txt
-        elif [ ! -f "$OPT_TMPDIR/$NewShowName/$NewShowName.xml" ]; then
+        if [ -f "${OPT_TMPDIR}/tvdb/$NewShowName/$NewShowName.xml" ]; then 
+            cat "${OPT_TMPDIR}/tvdb/$NewShowName/$NewShowName.xml" | grep "<EpisodeName>"|replace "  <EpisodeName>" ""|replace "</EpisodeName>" ""|tr -d [:punct:]>${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".Ename.txt
+            cat ${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".xml | grep "<SeasonNumber>"|replace "<SeasonNumber>" ""|replace "</SeasonNumber>" ""|replace " " "">${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".S.txt
+            cat ${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".xml | grep "<EpisodeNumber>"|replace "<EpisodeNumber>" ""|replace "</EpisodeNumber>" ""|replace " " "">${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".E.txt
+        elif [ ! -f "${OPT_TMPDIR}/tvdb/$NewShowName/$NewShowName.xml" ]; then
             echo "***FAILURE: curl -s -m$OPT_TVDBTIMEOUT http://www.thetvdb.com/api/$OPT_TVDBAPIKEY/series/$seriesid/all/en.xml">>${logfile}
         fi
         
         #check if files were created and generate message
-        if [ -f $OPT_TMPDIR/"$NewShowName"/"$NewShowName".Ename.txt ]; then
-            echo "LOCAL DATABASE UPDATED:$OPT_TMPDIR/$NewShowName">>${logfile}
-        elif [ ! -f "$OPT_TMPDIR/$NewShowName/$NewShowName.Ename.txt" ]; then
-            echo "*** PERMISSION ERROR $OPT_TMPDIR/$NewShowName/">>${logfile}
+        if [ -f ${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".Ename.txt ]; then
+            echo "LOCAL DATABASE UPDATED:${OPT_TMPDIR}/tvdb/$NewShowName">>${logfile}
+        elif [ ! -f "${OPT_TMPDIR}/tvdb/$NewShowName/$NewShowName.Ename.txt" ]; then
+            echo "*** PERMISSION ERROR ${OPT_TMPDIR}/tvdb/$NewShowName/">>${logfile}
         fi
         
         
         #####PROCESS SHOW INFORMATION#####
         #grep use fuzzy logic to find the closest show name from the locally created database and return absolute episode number
-        local absolouteEpisodeNumber=`agrep -1 -n "${epn:0:29}" "$OPT_TMPDIR""/""$NewShowName""/""$NewShowName"".Ename.txt"|grep -m1 ^|sed 's/:.*//'`
+        local absolouteEpisodeNumber=`agrep -1 -n "${epn:0:29}" "${OPT_TMPDIR}/tvdb""/""$NewShowName""/""$NewShowName"".Ename.txt"|grep -m1 ^|sed 's/:.*//'`
         echo DEFINED ABSOLOUTE EPISODE NUMBER: $absolouteEpisodeNumber>>${logfile}
         
         #if line match is obtained, then gather Sxx and Exx
         if [ "$absolouteEpisodeNumber" !=  ""  ]; then
-            epn=`sed -n $absolouteEpisodeNumber'p' $OPT_TMPDIR/"$NewShowName"/"$NewShowName".Ename.txt|sed 's/;.*//'`
+            epn=`sed -n $absolouteEpisodeNumber'p' ${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".Ename.txt|sed 's/;.*//'`
         
             #gather series and episode names from files created earlier.
-            local exx=`sed -n $absolouteEpisodeNumber'p' $OPT_TMPDIR/"$NewShowName"/"$NewShowName".E.txt`
-            local sxx=`sed -n $absolouteEpisodeNumber'p' $OPT_TMPDIR/"$NewShowName"/"$NewShowName".S.txt`
+            local exx=`sed -n $absolouteEpisodeNumber'p' ${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".E.txt`
+            local sxx=`sed -n $absolouteEpisodeNumber'p' ${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".S.txt`
         
             # Single digit episode and show names are not allowed Ex and Sx replaced with Exx Sxx
             if [ "$exx" -lt 10 ]; then 
@@ -547,7 +550,8 @@ titlesub2se ()
         echo "series was not found the tvdb may be down try renaming $ARGSHOWNAME">>${logfile}
     fi
     
-     #!!!Cleanup tmp directory
+    #cleanup OPT_TMPDIR/tvdb
+    rm -f -r "${OPT_TMPDIR}/tvdb"
 
     #Echo final result s##e## to be used by caller.  s00e00 is used to indicate 'not found'
     if [ "$exx" = "" ]; then
@@ -631,7 +635,6 @@ else
         NOLOOKUPL=$(cat "$CONFIGFILE" | grep "^nolookup=$SHOWFIELD$") 
         if [ -z "$NOLOOKUPL" ] && [ -z "$NOLOOKUPG" ]; then 
             #Get Season and Episode string
-            #!!!Add titlesub2se.sh as function within this script
             SXXEXX=$( titlesub2se "$SHOWFIELD" "$EPFIELD" )
             SEASONFIELD=$(echo $SXXEXX | sed -e 's:s\([0-9]*\)e[0-9]*:\1:') 
         else 
