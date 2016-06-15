@@ -75,10 +75,8 @@ DEF_NAMEFORMAT="yyyy-mm-dd"
 DEF_FOLDERFORMAT="/t/s"
 DEF_PRECMD=""
 DEF_POSTCMD=""
-#Internet access Timeout in seconds: Default Timeout=50 
-DEF_TVDBTimeout=50
-#the following line contains the API key from www.TheTvDb.Com. Default: 6DF511BB2A64E0E9
-DEF_TVDBAPIkey=6DF511BB2A64E0E9
+DEF_TVDBTIMEOUT="50"
+DEF_TVDBAPIKEY="6DF511BB2A64E0E9"
 
 #== DefaultsEditBlock===========================================================
 
@@ -442,7 +440,7 @@ fi
 #
 #Usage: titlesub2se "show name" "episode name"
 #Output: sxxexx string (s00e00 if not found)
-#Dependencies: depends on "Curl" and "agrep"
+#Dependencies: curl, agrep
 #
 titlesub2se ()
 {
@@ -455,7 +453,8 @@ titlesub2se ()
     local ShowName=$ARGSHOWNAME
     local epn=`echo $ARGEPISODENAME|sed 's/;.*//'|tr -d [:punct:]`
     
-    #!!!Check for show translations relating to the show in question.
+    #Check for show translations relating to the show in question.
+    #!!!Read these from our config file
     if [ -f $OPT_TMPDIR/showtranslations ]; then 
         local showtranslation=`grep "$ShowName = " "$OPT_TMPDIR/showtranslations"|replace "$ShowName = " ""|replace "$OPT_TMPDIR/showtranslations" ""`		 
         if [ "$showtranslation" != "$null" ];then 
@@ -486,21 +485,21 @@ titlesub2se ()
     #Create folder for database if it does not exist
     if [ ! -d "$OPT_TMPDIR/$NewShowName" ]; then
         mkdir $OPT_TMPDIR/"$NewShowName"
-        echo "creating home OPT_TMPDIR and log file">>$OPT_TMPDIR/"$logfile"
+        echo "creating home OPT_TMPDIR and log file">>${logfile}
     fi
-        echo "SEARCH FOUND:""$NewShowName" "ID#:" $seriesid >>${logfile}
+    echo "SEARCH FOUND:""$NewShowName" "ID#:" $seriesid >>${logfile}
     
     #If series ID is obtained, then get show information.
     if [ "$seriesid" != "" ]; then
-    
-    #####GET SHOW INFORMATION#####
-    #Strip XML tags
+        
+        #####GET SHOW INFORMATION#####
+        #Strip XML tags
         seriesid=`echo $seriesid|tr -d "<seriesid>"|tr -d "</seriesid>"`
-    
-    #download series info for series id
-        curl -s -m"$OPT_TVDBTIMEOUT" "http://www.thetvdb.com/api/$OPT_TVDBAPIKEY/series/$seriesid/all/en.xml">$OPT_TMPDIR"/$NewShowName/$NewShowName.xml"
-    
-    #create a folder/file "database" Strip XML tags.  Series, Exx and Sxx are separated into different files
+        
+        #download series info for series id
+        curl -s -m"${OPT_TVDBTIMEOUT}" "http://www.thetvdb.com/api/${OPT_TVDBAPIKEY}/series/$seriesid/all/en.xml">$OPT_TMPDIR"/$NewShowName/$NewShowName.xml"
+        
+        #create a folder/file "database" Strip XML tags.  Series, Exx and Sxx are separated into different files
         if [ -f "$OPT_TMPDIR/$NewShowName/$NewShowName.xml" ]; then 
             cat "$OPT_TMPDIR/$NewShowName/$NewShowName.xml" | grep "<EpisodeName>"|replace "  <EpisodeName>" ""|replace "</EpisodeName>" ""|tr -d [:punct:]>$OPT_TMPDIR/"$NewShowName"/"$NewShowName".Ename.txt
             cat $OPT_TMPDIR/"$NewShowName"/"$NewShowName".xml | grep "<SeasonNumber>"|replace "<SeasonNumber>" ""|replace "</SeasonNumber>" ""|replace " " "">$OPT_TMPDIR/"$NewShowName"/"$NewShowName".S.txt
@@ -508,28 +507,28 @@ titlesub2se ()
         elif [ ! -f "$OPT_TMPDIR/$NewShowName/$NewShowName.xml" ]; then
             echo "***FAILURE: curl -s -m$OPT_TVDBTIMEOUT http://www.thetvdb.com/api/$OPT_TVDBAPIKEY/series/$seriesid/all/en.xml">>${logfile}
         fi
-    
-    #check if files were created and generate message
+        
+        #check if files were created and generate message
         if [ -f $OPT_TMPDIR/"$NewShowName"/"$NewShowName".Ename.txt ]; then
             echo "LOCAL DATABASE UPDATED:$OPT_TMPDIR/$NewShowName">>${logfile}
         elif [ ! -f "$OPT_TMPDIR/$NewShowName/$NewShowName.Ename.txt" ]; then
             echo "*** PERMISSION ERROR $OPT_TMPDIR/$NewShowName/">>${logfile}
         fi
-    
-    
-    #####PROCESS SHOW INFORMATION#####
-    #grep use fuzzy logic to find the closest show name from the locally created database and return absolute episode number
+        
+        
+        #####PROCESS SHOW INFORMATION#####
+        #grep use fuzzy logic to find the closest show name from the locally created database and return absolute episode number
         local absolouteEpisodeNumber=`agrep -1 -n "${epn:0:29}" "$OPT_TMPDIR""/""$NewShowName""/""$NewShowName"".Ename.txt"|grep -m1 ^|sed 's/:.*//'`
         echo DEFINED ABSOLOUTE EPISODE NUMBER: $absolouteEpisodeNumber>>${logfile}
-    
-    #if line match is obtained, then gather Sxx and Exx
+        
+        #if line match is obtained, then gather Sxx and Exx
         if [ "$absolouteEpisodeNumber" !=  ""  ]; then
             epn=`sed -n $absolouteEpisodeNumber'p' $OPT_TMPDIR/"$NewShowName"/"$NewShowName".Ename.txt|sed 's/;.*//'`
-    
+        
             #gather series and episode names from files created earlier.
             local exx=`sed -n $absolouteEpisodeNumber'p' $OPT_TMPDIR/"$NewShowName"/"$NewShowName".E.txt`
             local sxx=`sed -n $absolouteEpisodeNumber'p' $OPT_TMPDIR/"$NewShowName"/"$NewShowName".S.txt`
-    
+        
             # Single digit episode and show names are not allowed Ex and Sx replaced with Exx Sxx
             if [ "$exx" -lt 10 ]; then 
                 exx=`echo e0$exx`
@@ -544,11 +543,12 @@ titlesub2se ()
         fi
         echo "EPISODE:$epn NUMBER:$absolouteEpisodeNumber $sxx$exx">>${logfile}
         #if series id is not obtained
-        elif [ "$seriesid" == "" ]; then 
+    elif [ "$seriesid" == "" ]; then 
         echo "series was not found the tvdb may be down try renaming $ARGSHOWNAME">>${logfile}
     fi
     
- 
+     #!!!Cleanup tmp directory
+
     #Echo final result s##e## to be used by caller.  s00e00 is used to indicate 'not found'
     if [ "$exx" = "" ]; then
             echo s00e00
@@ -632,10 +632,10 @@ else
         if [ -z "$NOLOOKUPL" ] && [ -z "$NOLOOKUPG" ]; then 
             #Get Season and Episode string
             #!!!Add titlesub2se.sh as function within this script
-            SXXEXX=$(titlesub2se.sh "$SHOWFIELD" "$EPFIELD") 
-            SEASONFIELD=$(echo $SXXEXX | sed -e 's:S\([0-9]*\)E[0-9]*:\1:') 
+            SXXEXX=$( titlesub2se "$SHOWFIELD" "$EPFIELD" )
+            SEASONFIELD=$(echo $SXXEXX | sed -e 's:s\([0-9]*\)e[0-9]*:\1:') 
         else 
-            SXXEXX="S00E00" 
+            SXXEXX="s00e00" 
             SEASONFIELD="00" 
         fi 
  
