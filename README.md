@@ -57,8 +57,20 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
   tvdblookup=[yes|no]
    specifies whether to attempt a tvdb lookup when naming a new file  
   
-  nameformat=[s99e99|syyemmdd|yyyy-mm-dd]
-   the naming format used for a new file  
+  nameformat=[s00e00|s00e##|syyemmdd|yyyy-mm-dd]
+   the naming format used for a new file
+   if tvdblookup is 'yes' this is a fallback format to s##e##
+   s00e00 will simply use 00 as a placeholder for season and episode
+   s00e## will use season 00 and determine a unique ## for episode
+   syyemmdd will use the last two digits of the recording year as season and
+    month day as episode
+   yyyy-mm-dd will name as ShowName - YYYY-MM-DD - episode title.ext
+  
+  folderformat=[/t|/s|/e/d]  
+   the folder structure used for a new file  
+   /t is title, /s is season, /e is episode, /d is date  
+   These can be combined or omitted as desired  
+   folderformat=/t/s would store a new file in the standard title/Season ## structure  
   
   epdatefirst=[yes|no]
    specifies whether to pu the date at the front or end the episode title  
