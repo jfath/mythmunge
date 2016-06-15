@@ -112,7 +112,6 @@ function optionvalue()
 }
 
 #-------------------------------------------------------------------------------
-#
 # Parse options from OPTIONSTR and/or config file
 # Precedence: command line, config file, default
 #
@@ -222,7 +221,9 @@ function checkusage ()
     fi
 }
 
-
+#-------------------------------------------------------------------------------
+# Init some variables, open the logfile, startnotify
+#
 function init ()
 {
     #-------------------------------------------------------------------------------
@@ -313,7 +314,8 @@ function querydb ()
 
     
 #-------------------------------------------------------------------------------
-
+# Transcode or remux the video file possibly removing commercials
+#
 function transcodecut ()
 {
     #tmp clip directory
@@ -408,7 +410,6 @@ function transcodecut ()
 }
 
 #-------------------------------------------------------------------------------
-#
 # If we are replacing or archiving the MythTV file.  We need to update the DB
 #
 function updatedb ()
@@ -455,6 +456,9 @@ EOF
     fi
 }
 
+#-------------------------------------------------------------------------------
+# archive or delete the original file if not 'new'
+#
 function archivedelete ()
 {
     # Archive original if requested
@@ -474,11 +478,8 @@ function archivedelete ()
     fi
 }
 
-#
-#
 #-------------------------------------------------------------------------------
 #Code from MythSExx
-#
 #Usage: titlesub2se "show name" "episode name"
 #Output: sxxexx string (s00e00 if not found)
 #Dependencies: curl, agrep
@@ -606,7 +607,6 @@ function titlesub2se ()
 
 
 #-------------------------------------------------------------------------------
-#
 # Function to look up TV season and episode information
 # Used to help rename when we are keeping the original MythTV file
 #
@@ -713,7 +713,6 @@ function tv_lookup ()
 }
 
 #-------------------------------------------------------------------------------
-#
 # If we are keeping the original MythTV file, we want to rename the 
 # file based on the nameformat and folderformat, then move the file to a new directory
 # A MythTV user job handles this by calling like:
@@ -742,6 +741,7 @@ function namemovenew ()
 
 
 #-------------------------------------------------------------------------------
+# Close out log and prepare for quitting
 #
 function cleanup ()
 {
