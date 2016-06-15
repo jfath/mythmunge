@@ -8,7 +8,7 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
     Edit defaults in DefaultsEditBlock as appropriate for your system  
     Add as a user job in MythTV  
  **Requires:**  
-    mythcommflag, ffmpeg, mkvmerge, ssmtp(optional)  
+    mythcommflag, ffmpeg (greater than v1.1), ssmtp(optional)  
   
  **Usage: mythmunge.sh /recpath/recfile [optionstr]**  
  optionstr is a comma delimited list of options  
@@ -25,6 +25,10 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
    tmpdir=  
    logdir=  
    dbpasswd=  
+   datefirst=  
+   tvdblookup=  
+   precmd=  
+   postcmd=  
   
  fileop=  
    archive = move original MythTV recording into an archives directory  
@@ -37,8 +41,11 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
  Example MythTV user job to remove commercials and place new recording in DVR directory:  
    mythmunge.sh "%DIR%/%FILE%" "fileop=new,remcom=yes,newdir=/mnt/VidTV/DVR"  
   
- Example of OPTIONSTR used to transcode to x264 video with mp3 audio  
-   acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast  
+ Example of OPTION used to transcode to x264 video with mp3 audio  
+   acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast
+   
+ Example of OPTION used to log a message including the new file name as a postcmd
+   "fileop=new,newdir=/my/vids,postcmd=echo \"finished %{NEWFILE}\" >/home/mongo/mythmunge/post.log"  
   
 #Config file format  
   

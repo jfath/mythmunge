@@ -80,7 +80,9 @@ PROGNOEXT=$(basename $0 .sh)
 ORIGFILE="$1"
 OPTIONSTR="$2"
 
-#DefaultsEditBlock (edit these values as appropriate for your system) ==========
+#
+#
+#== DefaultsEditBlock (edit these values as appropriate for your system) =======
 DEF_CFGFILE="${HOME}/${PROGNOEXT}/${PROGNOEXT}.cfg"
 DEF_FILEOP="new"
 DEF_NEWDIR="${HOME}/${PROGNOEXT}/DVR"
@@ -99,7 +101,7 @@ DEF_DATEFIRST="no"
 DEF_TVDBLOOKUP="yes"
 DEF_PRECMD=""
 DEF_POSTCMD=""
-#DefaultsEditBlock==============================================================
+#== DefaultsEditBlock===========================================================
 
 
 #-------------------------------------------------------------------------------
@@ -583,8 +585,8 @@ if [ "$OPT_FILEOP" == "new" ]; then
     if [ -z "`ls "${OUTDIR}"`" ]; then
         mkdir -p "${OUTDIR}"
     fi
-    EXTVAR_NEWFILE="$OUTDIR/$OUTNAME.${OPT_FILEFORMAT}"
-    mv -f "${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}" "${EXTVAR_NEWFILE}"
+    NEWFILE="$OUTDIR/$OUTNAME.${OPT_FILEFORMAT}"
+    mv -f "${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}" "${NEWFILE}"
 fi
 
 #-------------------------------------------------------------------------------
@@ -593,9 +595,10 @@ fi
 # Execute postcmd if specified
 # Note, this could be dangerous depending on script context
 # We should be running as user mythtv with limit permissions
-#!!!Need to make EXTVAR_NEWFILE available to postcmd
+# !!!Should this be sed 's/%{/${_/g' to limit access to certain vars??
 if [ -n "${OPT_POSTCMD}" ]; then
-    eval ${OPT_POSTCMD}
+    EVALSTR=`echo ${OPT_POSTCMD} | sed 's/%{/${/g'`
+    eval ${EVALSTR}
 fi
 
 #-------------------------------------------------------------------------------
