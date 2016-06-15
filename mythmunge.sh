@@ -94,10 +94,11 @@ function main ()
     quitsuccess
 }
 
-#
+#-------------------------------------------------------------------------------
 # Option parsing helper function
 # Usage: var=$( optionvalue "option_search_string" "default_value" )
 # Uses globals OPTIONSTR, CFGOPTIONSTR
+#
 function optionvalue()
 {
     OPT_THIS="${2}"
@@ -191,7 +192,7 @@ function quitsuccess ()
 }
 
 #-------------------------------------------------------------------------------
-#Check usage
+#Check command line usage
 #
 function checkusage ()
 {
