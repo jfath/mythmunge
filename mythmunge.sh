@@ -69,6 +69,7 @@ DEF_LOGDIR="${HOME}/${PROGNOEXT}/log"
 DEF_DBPASSWD="mythtv"
 DEF_EPDATEFIRST="no"
 DEF_TVDBLOOKUP="yes"
+DEF_NAMEFORMAT="yyyy-mm-dd"
 DEF_PRECMD=""
 DEF_POSTCMD=""
 #== DefaultsEditBlock===========================================================
@@ -116,6 +117,7 @@ OPT_LOGDIR=$( optionvalue "logdir=" "${DEF_LOGDIR}" )
 OPT_DBPASSWD=$( optionvalue "dbpasswd=" "${DEF_DBPASSWD}" )
 OPT_EPDATEFIRST=$( optionvalue "epdatefirst=" "${DEF_EPDATEFIRST}" )
 OPT_TVDBLOOKUP=$( optionvalue "tvdblookup=" "${DEF_TVDBLOOKUP}" )
+OPT_NAMEFORMAT=$( optionvalue "nameformat=" "${DEF_NAMEFORMAT}" )
 OPT_PRECMD=$( optionvalue "precmd=" "${DEF_PRECMD}" )
 OPT_POSTCMD=$( optionvalue "postcmd=" "${DEF_POSTCMD}" )
 
