@@ -27,43 +27,13 @@
 #DEALINGS IN THE SOFTWARE.
 #
 #
+# Usage: mythmunge.sh /recpath/recfile [options]
+# options is a string of comma delimited key=value pairs
+# see README.md for usage and option descriptions
+#
 # Example MythTV user job:
 # mythmunge.sh "%DIR%/%FILE%" "fileop=new,newdir=/mnt/VidTV/DVR"
 #
-# Usage: mythmunge.sh /recpath/recfile [options]
-# options is a string of comma delimited list of options
-#   fileop=[archive|replace|new]
-#   newdir=/directory/for/new
-#   remcom=[yes|no]
-#   fileformat=
-#   vcodec=
-#   vcodecargs=
-#   acodec=
-#   acodecargs=
-#   notify=[none|start|end|startend|error]
-#   email=
-#   cfgfile=
-#   tmpdir=
-#   logdir=
-#   dbpasswd=
-#   datefirst=
-#   tvdblookup=
-#   precmd=
-#   postcmd=
-#
-
-#fileop=
-#archive = move original MythTV recording into an archives directory (default)
-#replace = overwrite original with new commercial-less recording
-#new = don't alter the MythTV version, but write new recording to another directory
-
-#notify=
-#none|start|end|startend|error when to send job notification emails
-#
-#newdir= is required if fileop is 'new'
-#
-# Example of OPTIONS used to transcode to x264 video with mp3 audio
-# acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast
 #
 # TODO:
 # !!!Avoid duplicate episode numbers if lookup fails
@@ -97,7 +67,7 @@ DEF_EMAIL="user@emailserver.com"
 DEF_TMPDIR="${HOME}/${PROGNOEXT}/tmp"
 DEF_LOGDIR="${HOME}/${PROGNOEXT}/log"
 DEF_DBPASSWD="mythtv"
-DEF_DATEFIRST="no"
+DEF_EPDATEFIRST="no"
 DEF_TVDBLOOKUP="yes"
 DEF_PRECMD=""
 DEF_POSTCMD=""
@@ -144,7 +114,7 @@ OPT_EMAIL=$( optionvalue "email=" "${DEF_EMAIL}" )
 OPT_TMPDIR=$( optionvalue "tmpdir=" "${DEF_TMPDIR}" )
 OPT_LOGDIR=$( optionvalue "logdir=" "${DEF_LOGDIR}" )
 OPT_DBPASSWD=$( optionvalue "dbpasswd=" "${DEF_DBPASSWD}" )
-OPT_DATEFIRST=$( optionvalue "datefirst=" "${DEF_DATEFIRST}" )
+OPT_EPDATEFIRST=$( optionvalue "epdatefirst=" "${DEF_EPDATEFIRST}" )
 OPT_TVDBLOOKUP=$( optionvalue "tvdblookup=" "${DEF_TVDBLOOKUP}" )
 OPT_PRECMD=$( optionvalue "precmd=" "${DEF_PRECMD}" )
 OPT_POSTCMD=$( optionvalue "postcmd=" "${DEF_POSTCMD}" )
@@ -199,7 +169,7 @@ if [ ! -f "$ORIGFILE" ]; then
     echo "tmpdir="
     echo "logdir="
     echo "dbpasswd="
-    echo "datefirst="
+    echo "epdatefirst="
     echo "tvdblookup="
     echo "precmd"
     echo "postcmd="
@@ -211,12 +181,9 @@ fi
 #-------------------------------------------------------------------------------
 #split directory and filename
 #
-#!!!Get this from original filename
-ORIGSUFFIX=".ts"
-
 RECDIR=`dirname $ORIGFILE`
 BASENAME=`basename $ORIGFILE`
-BASENOEXT=`basename $BASENAME ${ORIGSUFFIX}`
+BASENOEXT=${BASENAME%.*}
 ARCHIVEDIR="$RECDIR/archive"
 
 #
@@ -487,7 +454,7 @@ local NOLOOKUPG
 local NOLOOKUPL
 
 #Get global settings from command line or config
-if [ "${OPT_DATEFIRST}" = "yes" ]; then
+if [ "${OPT_EPDATEFIRST}" = "yes" ]; then
     EPDATEFIRSTG="*"
 else
     EPDATEFIRSTG=$(cat "$CONFIGFILE" | grep "^episodedatefirst=\*$")
@@ -517,7 +484,6 @@ if [ -z "$OUTNAME" ]; then
 else 
     #Replace all bad filename characters 
     OUTNAME=$(echo $OUTNAME | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
-    #OUTNAME=$(echo $OUTNAME | sed -e 's:[^a-zA-Z0-9~ -]:_:g') 
     #If no ~ delimeters use output name as passed 
     if [ ! -z "$CHKFORM" ]; then 
         #Split OUTNAME into components 
@@ -590,7 +556,6 @@ if [ "$OPT_FILEOP" == "new" ]; then
 fi
 
 #-------------------------------------------------------------------------------
-
 #
 # Execute postcmd if specified
 # Note, this could be dangerous depending on script context
