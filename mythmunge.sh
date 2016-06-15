@@ -45,14 +45,11 @@
 
 #
 # get command line args for later use and use in defaults
-#
 PROG=$(basename $0)
 PROGNOEXT=$(basename $0 .sh)
 ORIGFILE="$1"
 OPTIONSTR="$2"
 
-#
-#
 #== DefaultsEditBlock (edit these values as appropriate for your system) =======
 DEF_CFGFILE="${HOME}/${PROGNOEXT}/${PROGNOEXT}.cfg"
 DEF_FILEOP="new"
@@ -78,8 +75,10 @@ DEF_TVDBTIMEOUT="50"
 DEF_TVDBAPIKEY="6DF511BB2A64E0E9"
 #== DefaultsEditBlock===========================================================
 
-#
-# main function that simply calls worker functions
+# We put a little code above for ease of editing defaults
+# from here on, all code is wrapped in functions and the last line of the
+# file calls our main function.  This construct allows us to forward reference
+# worker functions and keeps the code much more readable
 #
 function main ()
 {
