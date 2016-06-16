@@ -326,7 +326,7 @@ function querydb ()
 function transcodecut ()
 {
     #tmp clip directory
-    if [ -z "`ls "${OPT_TMPDIR}"/clips`" ]; then
+    if [ -z "`ls "${OPT_TMPDIR}"/clips 2>/dev/null`" ]; then
         mkdir -p "${OPT_TMPDIR}"/clips
     fi
     
@@ -499,7 +499,7 @@ function lookupsenum ()
     echo "TheTVDB SEARCH INITIATED AT `date`">>${logfile} 
     
     #tmp working directory
-    if [ -z "`ls "${OPT_TMPDIR}"/tvdb`" ]; then
+    if [ -z "`ls "${OPT_TMPDIR}"/tvdb 2>/dev/null`" ]; then
         mkdir -p "${OPT_TMPDIR}"/tvdb
     fi
 
@@ -585,14 +585,14 @@ function lookupsenum ()
         
             # Single digit episode and show names are not allowed Ex and Sx replaced with Exx Sxx
             if [ "$exx" -lt 10 ]; then 
-                exx=`echo e0$exx`
+                exx=`echo 0$exx`
             elif [ "$exx" -gt 9 ]; then 
-                exx=`echo e$exx`
+                exx=`echo $exx`
             fi
             if [ "$sxx" -lt 10 ]; then 
-                sxx=`echo s0$sxx`
+                sxx=`echo 0$sxx`
             elif [ "$sxx" -gt 9 ]; then 
-                sxx=`echo s$sxx`
+                sxx=`echo $sxx`
             fi
         fi
         echo "EPISODE:$epn NUMBER:$absolouteEpisodeNumber $sxx$exx">>${logfile}
@@ -723,7 +723,7 @@ function namemovenew ()
 
         #Move the new file to its final location
         echo "$PROG: moving new file to $OUTDIR/$OUTNAME.${OPT_FILEFORMAT}" >>${logfile}
-        if [ -z "`ls "${OUTDIR}"`" ]; then
+        if [ -z "`ls "${OUTDIR}" 2>/dev/null`" ]; then
             mkdir -p "${OUTDIR}"
         fi
         NEWFILE="$OUTDIR/$OUTNAME.${OPT_FILEFORMAT}"
