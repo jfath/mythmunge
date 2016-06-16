@@ -666,9 +666,8 @@ function replacetemplate ()
     #%Y four digit year  
     #%u unique episode number
     
-    //!!! create all fields used below
-
-    newstr=`echo ${newstr} | sed 's:%T:${TITLEFIELD}:g' | sed 's:%E:${EPFIELD}:g' | sed 's:%s:${SEASONNUM}:g' | sed 's:%e:${EPISODENUM}:g'`
+    newstr=`echo ${newstr} | sed 's:%T:${SHOWFIELD}:g' | sed 's:%E:${EPFIELD}:g' | sed 's:%s:${SEASONNUM}:g' | sed 's:%e:${EPISODENUM}:g'`
+    #!!!parse RECFIELD to get date related fields
     newstr=`echo ${newstr} | sed 's:%y:${year2d}:g' | sed 's:%m:${month2d}:g' | sed 's:%s:${day2d}:g' | sed 's:%e:${year4d}:g'`
     echo "${newstr}"
 }
