@@ -654,7 +654,7 @@ function tv_lookup ()
 #
 function replacetemplate ()
 {
-    local newstr=$1
+    local newstr="${1}"
 
     #%T is show title  
     #%E is show episode text  
@@ -665,11 +665,27 @@ function replacetemplate ()
     #%d two digit day  
     #%Y four digit year  
     #%u unique episode number
-    
-    newstr=`echo ${newstr} | sed 's:%T:${SHOWFIELD}:g' | sed 's:%E:${EPFIELD}:g' | sed 's:%s:${SEASONNUM}:g' | sed 's:%e:${EPISODENUM}:g'`
-    #!!!parse RECFIELD to get date related fields
-    newstr=`echo ${newstr} | sed 's:%y:${year2d}:g' | sed 's:%m:${month2d}:g' | sed 's:%s:${day2d}:g' | sed 's:%e:${year4d}:g'`
+
+    #parse RECDATEFIELD to get date related fields
+    IFS='-' read -a datefields <<< "${RECDATEFIELD}"
+    year4d="${datefields[0]}"
+    month2d="${datefields[1]}"
+    IFS=' ' read -a dayfields <<< "${datefields[2]}"
+    day2d="${dayfields[0]}"
+    rectime="${dayfields[1]}"
+    year2d=${year4d:(-2)}
+
+    #log name components
+    echo "$PROG formatstr: ${newstr}" >>${logfile}
+    echo "$PROG showinfo: ${SHOWFIELD} ; ${EPFIELD} ; ${SEASONNUM} ; ${EPISODENUM}" >>${logfile}
+    echo "$PROG datefields: ${year4d} ; ${year2d} ; ${month2d} ; ${day2d} ; ${rectime}" >>${logfile}
+
+    newstr=`echo "${newstr}" | sed "s/%T/${SHOWFIELD}/g; s/%E/${EPFIELD}/g; s/%s/${SEASONNUM}/g; s/%e/${EPISODENUM}/g"`
+    newstr=`echo "${newstr}" | sed "s/%y/${year2d}/g; s/%m/${month2d}/g; s/%d/${day2d}/g; s/%Y/${year4d}/g"`
     echo "${newstr}"
+ 
+    #log the replaced template   
+    echo "$PROG replacedstr: ${newstr}" >>${logfile}
 }
 
 #-------------------------------------------------------------------------------
@@ -678,11 +694,11 @@ function replacetemplate ()
 function getnewname ()
 {
 
-    dirfrag=$( replacetemplate ${OPT_FOLDERFORMAT} )
+    dirfrag=$( replacetemplate "${OPT_FOLDERFORMAT}" )
     OUTDIR="${OPT_NEWDIR}/${dirfrag}"
 
-    namefrag=$( replacetemplate ${OPT_NAMEFORMAT} )
-    //!!!Deal with %u
+    namefrag=$( replacetemplate "${OPT_NAMEFORMAT}" )
+    #!!!Deal with %u
     OUTNAME="${namefrag}"
 }
 
@@ -698,7 +714,7 @@ function namemovenew ()
          #Replace all bad filename characters
          SHOWFIELD=$(echo ${dbtitle} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
          EPFIELD=$(echo ${dbtitleep} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
-         RECFIELD=$(echo ${dbstarttime} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
+         RECDATEFIELD=$(echo ${dbstarttime} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
 
         #Move new file to new directory rather than replacing Myth file and DB
         echo "$PROG: fileop is 'new', keeping original file" >>${logfile}
