@@ -66,7 +66,6 @@ DEF_EMAIL="user@emailserver.com"
 DEF_TMPDIR="${HOME}/${PROGNOEXT}/tmp"
 DEF_LOGDIR="${HOME}/${PROGNOEXT}/log"
 DEF_DBPASSWD="mythtv"
-DEF_EPDATEFIRST="no"
 DEF_TVDBLOOKUP="yes"
 DEF_NAMEFORMAT="yyyy-mm-dd"
 DEF_FOLDERFORMAT="/t/s"
@@ -138,7 +137,6 @@ function parseoptions ()
     OPT_TMPDIR=$( optionvalue "tmpdir=" "${DEF_TMPDIR}" )
     OPT_LOGDIR=$( optionvalue "logdir=" "${DEF_LOGDIR}" )
     OPT_DBPASSWD=$( optionvalue "dbpasswd=" "${DEF_DBPASSWD}" )
-    OPT_EPDATEFIRST=$( optionvalue "epdatefirst=" "${DEF_EPDATEFIRST}" )
     OPT_TVDBLOOKUP=$( optionvalue "tvdblookup=" "${DEF_TVDBLOOKUP}" )
     OPT_NAMEFORMAT=$( optionvalue "nameformat=" "${DEF_NAMEFORMAT}" )
     OPT_FOLDERFORMAT=$( optionvalue "folderformat=" "${DEF_FOLDERFORMAT}" )
@@ -214,7 +212,6 @@ function checkusage ()
         echo "tmpdir="
         echo "logdir="
         echo "dbpasswd="
-        echo "epdatefirst="
         echo "tvdblookup="
         echo "precmd"
         echo "postcmd="
@@ -653,85 +650,41 @@ function tv_lookup ()
     fi 
 }
 
+#
+#
+function replacetemplate ()
+{
+    local newstr=$1
+
+    #%T is show title  
+    #%E is show episode text  
+    #%s two digit season number from tvdb  
+    #%e two digit episode number from tvdb  
+    #%y two digit year  
+    #%m two digit month  
+    #%d two digit day  
+    #%Y four digit year  
+    #%u unique episode number
+    
+    //!!! create all fields used below
+
+    newstr=`echo ${newstr} | sed 's:%T:${TITLEFIELD}:g' | sed 's:%E:${EPFIELD}:g' | sed 's:%s:${SEASONNUM}:g' | sed 's:%e:${EPISODENUM}:g'`
+    newstr=`echo ${newstr} | sed 's:%y:${year2d}:g' | sed 's:%m:${month2d}:g' | sed 's:%s:${day2d}:g' | sed 's:%e:${year4d}:g'`
+    echo "${newstr}"
+}
+
 #-------------------------------------------------------------------------------
 # Build OUTNAME and OUTDIR according to nameformat and folderformat
 #
 function getnewname ()
 {
 
-    local EPDATEFIRSTG 
-    local EPDATEFIRSTL 
-    
-    # Config file format episodedatefirst=showtitle 
-    # episodedatefirst will prepend @RecDate to the episode name in order to force sorting by date if S00E00
-    # The * wildcard can be used to force all 
+    dirfrag=$( replacetemplate ${OPT_FOLDERFORMAT} )
+    OUTDIR="${OPT_NEWDIR}/${dirfrag}"
 
-    #Get global settings from command line or config
-    if [ "${OPT_EPDATEFIRST}" = "yes" ]; then
-        EPDATEFIRSTG="*"
-    else
-        EPDATEFIRSTG=$(cat "$OPT_CFGFILE" | grep "^episodedatefirst=\*$")
-    fi
-    EPDATEFIRSTL=$(cat "$OPT_CFGFILE" | grep "^episodedatefirst=$SHOWFIELD$") 
-
-    #Add record date to episode in various ways 
-    if [ -z "$EPDATEFIRSTG" ] && [ -z "$EPDATEFIRSTL" ]; then 
-        #Blank episodes don't sort well in WMC so use @recorddate as apname 
-        if [ -z "$EPFIELD" ]; then 
-            epfrag="@$RECFIELD" 
-        else 
-            epfrag="$EPFIELD - [$RECFIELD]" 
-        fi 
-    else 
-        #Add the record date to the front of the episode name so shows will 
-        #sort alphabetically by date if season and episode don't look up 
-        if [ -z "$EPFIELD" ]; then 
-            epfrag="@$RECFIELD" 
-        else 
-            epfrag="@$RECFIELD $EPFIELD" 
-        fi
-    fi 
-
-    #!!!create all the fields used to build directory and name
-    #!!!TITLEFIELD,SEASONFIELD,EPFIELD,DATEFIELD,year2d,month2d,day2d
-
-    #use sed to replace /t, /s, /e, and /d in OPT_FOLDERFORMAT
-    dirfrag="${OPT_FOLDERFORMAT}"
-    dirfrag=`echo ${dirfrag} | sed 's:/t:/${TITLEFIELD}:g'`
-    dirfrag=`echo ${dirfrag} | sed 's:/s:/${SEASONFIELD}:g'`
-    dirfrag=`echo ${dirfrag} | sed 's:/e:/${EPFIELD}:g'`
-    dirfrag=`echo ${dirfrag} | sed 's:/d:/${DATEFIELD}:g'`
-    OUTDIR=${OPT_NEWDIR}/${dirfrag}
-    
-    #between title and se
-    sep1frag=" - "
-    #between se and episode
-    sep2frag=" - "
-
-    titlefrag="${SHOWFIELD}"
-    
-    case $OPT_NAMEFORMAT in
-        s00e00)
-            sefrag="s00e00"
-            ;;
-        s00e##)
-            #!!!build name and check loop until $OUTDIR/${titlefrag}${sep1frag}${sefrag}${sep2frag}${epfrag} doesn't exist
-            ;;
-        syyemmdd)
-            sefrag="s${year2d}e${month2d}{day2d})"
-            ;;
-        yyyy-mm-dd)
-            sefrag=${DATEFIELD}
-            ;;
-        *)
-            # default to s##e## from lookup
-            sefrag="s${SEASONNUM}e${EPISODENUM}"
-            ;;
-    esac
-
-
-    #Build output name from fragments
-    OUTNAME="${titlefrag}${sep1frag}${sefrag}${sep2frag}${epfrag}"
+    namefrag=$( replacetemplate ${OPT_NAMEFORMAT} )
+    //!!!Deal with %u
+    OUTNAME="${namefrag}"
 }
 
 #-------------------------------------------------------------------------------

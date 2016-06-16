@@ -58,23 +58,24 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
   tvdblookup=[yes|no]  
    specifies whether to attempt a tvdb lookup when naming a new file  
   
-  nameformat=[s00e00|s00e##|syyemmdd|yyyy-mm-dd]  
+  nameformat=format string  
+   %T is show title  
+   %E is show episode text  
+   %s two digit season number from tvdb  
+   %e two digit episode number from tvdb  
+   %y two digit year  
+   %m two digit month  
+   %d two digit date  
+   %Y four digit year  
+   %u unique episode number  
+  
    the naming format used for a new file  
-   if tvdblookup is 'yes' this is a fallback format from s##e##  
-   s00e00 will simply use 00 as a placeholder for season and episode  
-   s00e## will use season 00 and determine a unique ## for episode  
-   syyemmdd will use the last two digits of the recording year as season and  
-    month day as episode  
-   yyyy-mm-dd will name as ShowName - YYYY-MM-DD - episode title.ext  
-  
-  folderformat=[/t|/s|/e/d]  
-   the folder structure used for a new file  
-   /t is title, /s is season, /e is episode, /d is date  
-   These can be combined or omitted as desired  
-   folderformat=/t/s would store a new file in the standard title/Season ## structure  
-  
-  epdatefirst=[yes|no]  
-   specifies whether to pu the date at the front or end the episode title  
+   %T - s%se%e - %E [%Y-%m-%d] will name show as Title - s##e## - EpisodeText [yyyy-mm-dd]  
+   
+  folderformat=format string  
+   the folder structure used for a new file
+   using the same template variables as nameformat
+   folderformat=/%T/Season %s would store a new file in the standard Title/Season ## structure  
   
   precmd=bash command to execute before munge  
    a string which will be executed in a bash shell before processing begins  
@@ -100,14 +101,9 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
 #Config file format  
   
 nolookup=showtitle  
-episodedatefirst=showtitle  
 options=  
   
-multiple lines of nolookup= and episodedatefirst= are allowed  
-episodedatefirst=* and nolookup=* are also allowed to force all  
-  
-episodedatefirst=someshowname  
-episodedatefirst=someothershowname  
+multiple lines of nolookup= are allowed and nolookup=* is also allowed to force no lookup for any show  
   
 nolookup=showtitlea  
 nolookup=showtitleb  
