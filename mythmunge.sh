@@ -50,6 +50,7 @@ PROGNOEXT=$(basename $0 .sh)
 ORIGFILE="$1"
 OPTIONSTR="$2"
 
+#
 #== DefaultsEditBlock (edit these values as appropriate for your system) =======
 DEF_CFGFILE="${HOME}/${PROGNOEXT}/${PROGNOEXT}.cfg"
 DEF_FILEOP="new"
@@ -86,6 +87,7 @@ function main ()
     init
     checkusage
     querydb
+    initp2
     transcodecut
     updatedb
     archivedelete
@@ -223,7 +225,8 @@ function checkusage ()
 }
 
 #-------------------------------------------------------------------------------
-# Init some variables, open the logfile, startnotify
+# Init some variables, open the logfile
+# run before values pulled from db
 #
 function init ()
 {
@@ -245,17 +248,26 @@ function init ()
     echo "$PROG: Starting `date`" >>${logfile}
     
 
-    #
-    #Send start notification if requested
-    startnotify
-    
-    
     # make sure we have a sane environment
     if [ -z "`which ffmpeg`" ]; then
         echo "$PROG: FFMpeg not present in the path. Adjust environment or install ffmpeg" >>${logfile}
-        quiterror
+        quiterrorearly
     fi
     
+}
+
+#-------------------------------------------------------------------------------
+# Notify start do precmd
+# run after values pulled from db
+#
+
+function initp2 ()
+{
+
+    #
+    #Send start notification if requested
+    startnotify
+
     #
     # Execute precmd if specified
     # Note, this could be dangerous depending on script context
@@ -264,7 +276,6 @@ function init ()
         EVALSTR=`echo ${OPT_PRECMD} | sed 's/%{/${/g'`
         eval ${EVALSTR}
     fi
-
 }
 
 #-------------------------------------------------------------------------------
@@ -306,11 +317,6 @@ function querydb ()
         quiterrorearly
     fi
     
-    
-    #Keep title, titleep, and start time in one variable for legacy purposes
-    #Avoid re-writing code that expects that format
-    #!!!Fix
-    OUTNAME="${dbtitle}~${dbtitleep}~${dbstarttime}"
 }
 
     
@@ -481,11 +487,11 @@ function archivedelete ()
 
 #-------------------------------------------------------------------------------
 #Code from MythSExx
-#Usage: titlesub2se "show name" "episode name"
-#Output: sxxexx string (s00e00 if not found)
+#Usage: lookupsenum "show name" "episode name"
+#Output: set globals SEASONNUM EPISODENUM (00 if not found)
 #Dependencies: curl, agrep
 #
-function titlesub2se ()
+function lookupsenum ()
 {
     local ARGSHOWNAME=$1
     local ARGEPISODENAME=$2
@@ -598,11 +604,13 @@ function titlesub2se ()
     #cleanup OPT_TMPDIR/tvdb
     rm -f -r "${OPT_TMPDIR}/tvdb"
 
-    #Echo final result s##e## to be used by caller.  s00e00 is used to indicate 'not found'
+    #Set global season and episode number strings.  00 is used to indicate 'not found'
     if [ "$exx" = "" ]; then
-            echo s00e00
+            SEASONNUM="00"
+            EPISODENUM="00"
     else
-            echo $sxx$exx
+            SEASONNUM="$sxx"
+            EPISODENUM="$exx"
     fi
 }
 
@@ -614,103 +622,80 @@ function titlesub2se ()
 function tv_lookup ()
 {
     #
-    # Uses globals:  OUTNAME, OUTDIR, PROGNOEXT
-    # Sets globals: OUTNAME, OUTDIR
+    # Uses globals:  SHOWFIELD EPFIELD
+    # Sets globals: SEASONNUM EPISODENUM
     # Uses config file: OPT_CFGFILE
     #
     #
     
-    #Default are only used if global OUTDIR and/or OUTNAME are not set before calling
-    local DEFOUTDIR="$OPT_NEWDIR"
-    local DEFOUTNAME="${PROGNOEXT}-output.${OPT_FILEFORMAT}"
-    
-    # Config file format 
-    # nolookup=showtitle 
-    # episodedatefirst=showtitle 
-    # 
-    # nolookup will prevent season/episode lookup for a show or globally if * wildcard is specified.  S99E99 will be used in file name 
-    # episodedatefirst will prepend @RecDate to the episode name in order to force sorting by date if S99E99.  The * wildcard can be used to force all 
-    local CONFIGFILE="$OPT_CFGFILE"
-    
-    local EPDATEFIRSTG 
-    local EPDATEFIRSTL 
+    # Default values if lookup fails
+    SEASONNUM="00"
+    EPISODENUM="00"
+
+    # nolookup=showtitle in config file
+    # nolookup will prevent season/episode lookup for a show or globally if * wildcard is specified.
     local NOLOOKUPG 
     local NOLOOKUPL
     
     #Get global settings from command line or config
-    if [ "${OPT_EPDATEFIRST}" = "yes" ]; then
-        EPDATEFIRSTG="*"
-    else
-        EPDATEFIRSTG=$(cat "$CONFIGFILE" | grep "^episodedatefirst=\*$")
-    fi
-    
     if [ "${OPT_TVDBLOOKUP}" = "no" ]; then
         NOLOOKUPG="*"
     else
-        NOLOOKUPG=$(cat "$CONFIGFILE" | grep "^nolookup=\*$") 
+        NOLOOKUPG=$(cat "$OPT_CFGFILE" | grep "^nolookup=\*$") 
     fi
-     
-    #If output dir isn't specified, use default dir 
-    if [ -z "$OUTDIR" ]; then 
-        OUTDIR="$DEFOUTDIR" 
+    #grep a config file to see if we should do a lookup for this show 
+    NOLOOKUPL=$(cat "$OPT_CFGFILE" | grep "^nolookup=$SHOWFIELD$") 
+
+    if [ -z "$NOLOOKUPL" ] && [ -z "$NOLOOKUPG" ]; then 
+        #Get Season and Episode string
+        #titlesub2se sets globals SEASONNUM and EPISODENUM
+        lookupsenum "$SHOWFIELD" "$EPFIELD"
     fi 
-       
-    #Generate ouput file and directory names 
-    local SHOWFIELD="" 
-    local EPFIELD="" 
-    local RECFIELD="" 
-    local SXXEXX="" 
-    local SEASONFIELD="" 
-    local CHKFORM=$(echo "$OUTNAME" | grep "\~") 
-    if [ -z "$OUTNAME" ]; then 
-        #If outname not specified use default
-        OUTNAME="$DEFOUTNAME"
-    else 
-        #Replace all bad filename characters 
-        OUTNAME=$(echo $OUTNAME | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
-        #If no ~ delimeters use output name as passed 
-        if [ ! -z "$CHKFORM" ]; then 
-            #Split OUTNAME into components 
-            SHOWFIELD=$(echo $OUTNAME | gawk 'BEGIN { FS = "~" } {print $1}') 
-            EPFIELD=$(echo $OUTNAME | gawk 'BEGIN { FS = "~" } {print $2}') 
-            RECFIELD=$(echo $OUTNAME | gawk 'BEGIN { FS = "~" } {print $3}') 
-     
-            #grep a config file to see if we should do a lookup for this show 
-            NOLOOKUPL=$(cat "$CONFIGFILE" | grep "^nolookup=$SHOWFIELD$") 
-            if [ -z "$NOLOOKUPL" ] && [ -z "$NOLOOKUPG" ]; then 
-                #Get Season and Episode string
-                SXXEXX=$( titlesub2se "$SHOWFIELD" "$EPFIELD" )
-                SEASONFIELD=$(echo $SXXEXX | sed -e 's:s\([0-9]*\)e[0-9]*:\1:') 
-            else 
-                SXXEXX="s00e00" 
-                SEASONFIELD="00" 
-            fi 
-     
-     
-            #Add record date to episode in various ways 
-            EPDATEFIRSTL=$(cat "$CONFIGFILE" | grep "^episodedatefirst=$SHOWFIELD$") 
-            if [ -z "$EPDATEFIRSTG" ] && [ -z "$EPDATEFIRSTL" ]; then 
-                #Blank episodes don't sort well in WMC so use @recorddate as apname 
-                if [ -z "$EPFIELD" ]; then 
-                    EPFIELD="@$RECFIELD" 
-                else 
-                    EPFIELD="$EPFIELD - [$RECFIELD]" 
-                fi 
-            else 
-                #Add the record date to the front of the episode name so shows will 
-                #sort alphabetically by date if season and episode don't look up 
-                if [ -z "$EPFIELD" ]; then 
-                    EPFIELD="@$RECFIELD" 
-                else 
-                    EPFIELD="@$RECFIELD $EPFIELD" 
-                fi 
-            fi 
-     
-            #Build output name from components 
-            OUTNAME="$SHOWFIELD - $SXXEXX - $EPFIELD" 
-            OUTDIR="$OUTDIR/$SHOWFIELD/Season $SEASONFIELD" 
-        fi 
+}
+
+#-------------------------------------------------------------------------------
+#
+#
+function getnewname ()
+{
+
+    local EPDATEFIRSTG 
+    local EPDATEFIRSTL 
+    
+    # Config file format episodedatefirst=showtitle 
+    # episodedatefirst will prepend @RecDate to the episode name in order to force sorting by date if S00E00
+    # The * wildcard can be used to force all 
+
+    #Get global settings from command line or config
+    if [ "${OPT_EPDATEFIRST}" = "yes" ]; then
+        EPDATEFIRSTG="*"
+    else
+        EPDATEFIRSTG=$(cat "$OPT_CFGFILE" | grep "^episodedatefirst=\*$")
     fi
+
+    #Add record date to episode in various ways 
+    EPDATEFIRSTL=$(cat "$OPT_CFGFILE" | grep "^episodedatefirst=$SHOWFIELD$") 
+    if [ -z "$EPDATEFIRSTG" ] && [ -z "$EPDATEFIRSTL" ]; then 
+        #Blank episodes don't sort well in WMC so use @recorddate as apname 
+        if [ -z "$EPFIELD" ]; then 
+            EPFIELD="@$RECFIELD" 
+        else 
+            EPFIELD="$EPFIELD - [$RECFIELD]" 
+        fi 
+    else 
+        #Add the record date to the front of the episode name so shows will 
+        #sort alphabetically by date if season and episode don't look up 
+        if [ -z "$EPFIELD" ]; then 
+            EPFIELD="@$RECFIELD" 
+        else 
+            EPFIELD="@$RECFIELD $EPFIELD" 
+        fi 
+    fi 
+  
+    #!!!!!Use nameformat and folderformat
+    #Build output name from components 
+    OUTNAME="$SHOWFIELD - ${SEASONNUM}${EPISODENUM} - $EPFIELD"
+    OUTDIR="$OPT_NEWDIR/$SHOWFIELD/Season $SEASONNUM" 
 }
 
 #-------------------------------------------------------------------------------
@@ -722,15 +707,21 @@ function tv_lookup ()
 function namemovenew ()
 {
     if [ "$OPT_FILEOP" == "new" ]; then
-        # If requested, move new file to new directory rather than replacing Myth file and DB
-        echo "$PROG: Keeping original file" >>${logfile}
-        if [ -z "${OUTDIR}" ]; then
-            OUTDIR="$OPT_NEWDIR"
-        fi
-        if [ -z "$OUTNAME" ]; then 
-            OUTNAME="${BASENOEXT}.${OPT_FILEFORMAT}"
-        fi
+         #Replace all bad filename characters
+         SHOWFIELD=$(echo ${dbtitle} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
+         EPFIELD=$(echo ${dbtitleep} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
+         RECFIELD=$(echo ${dbstarttime} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
+
+        #Move new file to new directory rather than replacing Myth file and DB
+        echo "$PROG: fileop is 'new', keeping original file" >>${logfile}
+
+        #Set SEASONNUM and EPISODENUM
         tv_lookup
+
+        #Set OUTNAME and OUTDIR
+        getnewname
+
+        #Move the new file to its final location
         echo "$PROG: moving new file to $OUTDIR/$OUTNAME.${OPT_FILEFORMAT}" >>${logfile}
         if [ -z "`ls "${OUTDIR}"`" ]; then
             mkdir -p "${OUTDIR}"

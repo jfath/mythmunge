@@ -5,7 +5,7 @@ Jerry Fath jerryfath@gmail.com
 Based on an original script by: Ian Thiele icthiele@gmail.com  
 
  **Installation:**  
-    Edit defaults in DefaultsEditBlock as appropriate for your system
+    Edit defaults in DefaultsEditBlock as appropriate for your system  
     Create config file if needed  
     Add as a user job in MythTV  
  **Requires:**  
@@ -60,7 +60,7 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
   
   nameformat=[s00e00|s00e##|syyemmdd|yyyy-mm-dd]  
    the naming format used for a new file  
-   if tvdblookup is 'yes' this is a fallback format to s##e##  
+   if tvdblookup is 'yes' this is a fallback format from s##e##  
    s00e00 will simply use 00 as a placeholder for season and episode  
    s00e## will use season 00 and determine a unique ## for episode  
    syyemmdd will use the last two digits of the recording year as season and  
@@ -84,6 +84,9 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
    the new file can be referred to as %{NEWFILE} within the command string  
   
   
+ Options can be set in mythmunch.sh, config file, or passed on command line  
+ Precedence: command line, config file, default  
+ 
  Example MythTV user job to remove commercials and place new recording in DVR directory:  
    mythmunge.sh "%DIR%/%FILE%" "fileop=new,remcom=yes,newdir=/mnt/VidTV/DVR"  
   
