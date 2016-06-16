@@ -654,7 +654,7 @@ function tv_lookup ()
 }
 
 #-------------------------------------------------------------------------------
-#
+# Build OUTNAME and OUTDIR according to nameformat and folderformat
 #
 function getnewname ()
 {
@@ -672,30 +672,66 @@ function getnewname ()
     else
         EPDATEFIRSTG=$(cat "$OPT_CFGFILE" | grep "^episodedatefirst=\*$")
     fi
+    EPDATEFIRSTL=$(cat "$OPT_CFGFILE" | grep "^episodedatefirst=$SHOWFIELD$") 
 
     #Add record date to episode in various ways 
-    EPDATEFIRSTL=$(cat "$OPT_CFGFILE" | grep "^episodedatefirst=$SHOWFIELD$") 
     if [ -z "$EPDATEFIRSTG" ] && [ -z "$EPDATEFIRSTL" ]; then 
         #Blank episodes don't sort well in WMC so use @recorddate as apname 
         if [ -z "$EPFIELD" ]; then 
-            EPFIELD="@$RECFIELD" 
+            epfrag="@$RECFIELD" 
         else 
-            EPFIELD="$EPFIELD - [$RECFIELD]" 
+            epfrag="$EPFIELD - [$RECFIELD]" 
         fi 
     else 
         #Add the record date to the front of the episode name so shows will 
         #sort alphabetically by date if season and episode don't look up 
         if [ -z "$EPFIELD" ]; then 
-            EPFIELD="@$RECFIELD" 
+            epfrag="@$RECFIELD" 
         else 
-            EPFIELD="@$RECFIELD $EPFIELD" 
-        fi 
+            epfrag="@$RECFIELD $EPFIELD" 
+        fi
     fi 
-  
-    #!!!!!Use nameformat and folderformat
-    #Build output name from components 
-    OUTNAME="$SHOWFIELD - ${SEASONNUM}${EPISODENUM} - $EPFIELD"
-    OUTDIR="$OPT_NEWDIR/$SHOWFIELD/Season $SEASONNUM" 
+
+    #!!!create all the fields used to build directory and name
+    #!!!TITLEFIELD,SEASONFIELD,EPFIELD,DATEFIELD,year2d,month2d,day2d
+
+    #use sed to replace /t, /s, /e, and /d in OPT_FOLDERFORMAT
+    dirfrag="${OPT_FOLDERFORMAT}"
+    dirfrag=`echo ${dirfrag} | sed 's:/t:/${TITLEFIELD}:g'`
+    dirfrag=`echo ${dirfrag} | sed 's:/s:/${SEASONFIELD}:g'`
+    dirfrag=`echo ${dirfrag} | sed 's:/e:/${EPFIELD}:g'`
+    dirfrag=`echo ${dirfrag} | sed 's:/d:/${DATEFIELD}:g'`
+    OUTDIR=${OPT_NEWDIR}/${dirfrag}
+    
+    #between title and se
+    sep1frag=" - "
+    #between se and episode
+    sep2frag=" - "
+
+    titlefrag="${SHOWFIELD}"
+    
+    case $OPT_NAMEFORMAT in
+        s00e00)
+            sefrag="s00e00"
+            ;;
+        s00e##)
+            #!!!build name and check loop until $OUTDIR/${titlefrag}${sep1frag}${sefrag}${sep2frag}${epfrag} doesn't exist
+            ;;
+        syyemmdd)
+            sefrag="s${year2d}e${month2d}{day2d})"
+            ;;
+        yyyy-mm-dd)
+            sefrag=${DATEFIELD}
+            ;;
+        *)
+            # default to s##e## from lookup
+            sefrag="s${SEASONNUM}e${EPISODENUM}"
+            ;;
+    esac
+
+
+    #Build output name from fragments
+    OUTNAME="${titlefrag}${sep1frag}${sefrag}${sep2frag}${epfrag}"
 }
 
 #-------------------------------------------------------------------------------
