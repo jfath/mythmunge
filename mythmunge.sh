@@ -39,7 +39,6 @@
 #
 # TODO:
 # !!!Check problem with last segment when removing commercials
-# !!!Use lower case and underscores for var names
 #===============================================================================
 
 #
