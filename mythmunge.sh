@@ -3,7 +3,7 @@
 # mythmunge.sh
 # Uses mythcommflag and ffmpeg to manipulate MythTV recordings
 # !Note: Edit defaults in DefaultsEditBlock below as appropriate for your system!
-# Dependencies: mythcommflag, mythutil, ffmpeg (>= v1.1), ssmtp(optional), curl and agrep
+# Dependencies: mythcommflag, mythutil, ffmpeg (>= v1.1), ssmtp(optional), curl, agrep
 #
 # Jerry Fath jerryfath at gmail dot com
 # Based on a script by: Ian Thiele icthiele at gmail dot com

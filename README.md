@@ -1,15 +1,16 @@
 # mythmunge
 MythTV user job bash script to remove commercials / transcode / copy / etc. recordings  
   
-Jerry Fath jerryfath@gmail.com  
-Based on an original script by: Ian Thiele icthiele@gmail.com  
+Jerry Fath jerryfath at gmail dot com  
+Based on an original script by: Ian Thiele icthiele at gmail dot com
+TheTVDB lookup code based on MythSExx by Adam Outler outleradam at hotmail dot com
 
  **Installation:**  
     Edit defaults in DefaultsEditBlock as appropriate for your system  
     Create config file if needed  
     Add as a user job in MythTV  
  **Requires:**  
-    mythcommflag, ffmpeg (greater than v1.1), ssmtp(optional)  
+    mythcommflag, ffmpeg (greater than v1.1), ssmtp(optional), curl, agrep  
   
  **Usage: mythmunge.sh /recpath/recfile [options]**  
    options is a string of comma delimited key=value pairs  
@@ -74,7 +75,7 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
    
   folderformat=format string  
    the folder structure used for a new file
-   using the same template variables as nameformat
+   using the same template variables as nameformat  
    folderformat=/%T/Season %s would store a new file in the standard Title/Season ## structure  
   
   precmd=bash command to execute before munge  
@@ -84,12 +85,13 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
    a string which will be executed in a bash shell after processing begins  
    the new file can be referred to as %{NEWFILE} within the command string  
   
+**Notes**
   
- Options can be set in mythmunch.sh, config file, or passed on command line  
- Precedence: command line, config file, default  
+ Options can be set in mythmunge.sh, config file, or passed on command line  
+ Precedence: command line, config file, defaults from mythmunge  
  
  Example MythTV user job to remove commercials and place new recording in DVR directory:  
-   mythmunge.sh "%DIR%/%FILE%" "fileop=new,remcom=yes,newdir=/mnt/VidTV/DVR"  
+   mythmunge.sh "%DIR%/%FILE%" "fileop=new,remcom=yes,newdir=/mnt/myvids/DVR"  
   
  Example of OPTION used to transcode to x264 video with mp3 audio  
    acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast  
@@ -114,21 +116,8 @@ nolookup=showtitlec
   
 options="fileop=new,newdir=\my\vids,remcom=no"  
   
-TheTVDB Show Name Translation
- The user may elect to create a file in the TitleSub2SE/ working folder which will then translate any recorded
- show name into the desired show name.  This is useful for adding a year to distinguish between a new series
- and an older series and/or typos in your guide data.  By default it should be called "showtranslations" and
- by default it will be in your home/username/titlesub2se folder.  showtranslations is not needed by most users
- and the file should only be created if it is needed. Under most circumstances, the integrated fuzzy logic 
- will be sufficient to translate the guide name to the TvDb name, however showtranslations is available to 
- improve accuracy to 100%. The format of showtranslations is as follows:
-
-#############################################################
-My Guide Show Title = www.TheTvDb.com Show Title            #
-Battlestar Gallactica = Battlestar Gallactica (2003)        # 
-Millionaire = Who Wants To Be A Millionaire                 #
-Aqua teen Hungerforce = Aqua Teen Hunger Force              #
-#############################################################
+TheTVDB Show Name Translation  
+  todo: re-implement within config file and document  
   
 #Release notes  
   
@@ -139,7 +128,7 @@ Modified 2012/6/27 jfath
  Modified 2014/7/6 jfath  
  Added email notification using ssmtp  
   
- Modified 2016/6/8 jfath  
+ Modified 2016/6/17 jfath  
  Changed to optionstr arguement format to allow additional command  
  line options  
 
