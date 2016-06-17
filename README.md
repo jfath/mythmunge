@@ -24,7 +24,10 @@ TheTVDB lookup code based on MythSExx by Adam Outler outleradam at hotmail dot c
    target directory required when fileop is 'new'  
   
   remcom=[yes|no]
-   remove or leave commercials  
+   remove or leave commercials
+   
+  filetype=[mkv|mp4|..]  
+   file container type of output file  
   
   vcodec=[copy|ffmpeg vcodec]
    ffmpeg video codec name or copy to remux original 
