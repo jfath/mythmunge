@@ -5,7 +5,7 @@ Jerry Fath jerryfath at gmail dot com
 Based on an original script by: Ian Thiele icthiele at gmail dot com
 TheTVDB lookup code based on MythSExx by Adam Outler outleradam at hotmail dot com
   
- **Features**
+ **Features**  
    Transcode or remux into any compression type or container supported by ffmpeg  
    Optionally remove commercials from a recording  
    Modify the MythTV recording, or produce a new file leaving the original recording unaltered  
