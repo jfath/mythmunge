@@ -2,7 +2,7 @@
 #===============================================================================
 # mythmunge.sh
 # Uses mythcommflag and ffmpeg to manipulate MythTV recordings
-# !Note: Edit defaults in DefaultsEditBlock below as appropriate for your system!
+# !Note: Edit defaults in DEFAULTSEDITBLOCK below as appropriate for your system!
 # Dependencies: mythcommflag, mythutil, ffmpeg (>= v1.1), ssmtp(optional), curl, agrep
 #
 # Jerry Fath jerryfath at gmail dot com
@@ -40,44 +40,43 @@
 # TODO:
 # !!!Check problem with last segment when removing commercials
 # !!!Use lower case and underscores for var names
-
 #===============================================================================
 
 #
 # get command line args for later use and use in defaults
-PROG=$(basename $0)
-PROGNOEXT=$(basename $0 .sh)
-ORIGFILE="$1"
-OPTIONSTR="$2"
+prog=$(basename $0)
+prognoext=$(basename $0 .sh)
+origfile="$1"
+optionstr="$2"
 
 #
-#== DefaultsEditBlock (edit these values as appropriate for your system) =======
-DEF_CFGFILE="${HOME}/${PROGNOEXT}/${PROGNOEXT}.cfg"
-DEF_FILEOP="new"
-DEF_NEWDIR="${HOME}/${PROGNOEXT}/DVR"
-DEF_REMCOM="no"
-DEF_FILETYPE="mkv"
-DEF_NOTIFY="none"
-DEF_VCODEC="copy"
-DEF_VCODECARGS=""
-DEF_ACODEC="copy"
-DEF_ACODECARGS=""
-DEF_EMAIL="user@emailserver.com"
-DEF_TMPDIR="${HOME}/${PROGNOEXT}/tmp"
-DEF_LOGDIR="${HOME}/${PROGNOEXT}/log"
-DEF_DBPASSWD="mythtv"
-DEF_TVDBLOOKUP="yes"
-DEF_NAMEFORMAT="%T - s%se%e - %E [%Y-%m-%d]"
-DEF_FOLDERFORMAT="/%T/Season %s"
-DEF_PRECMD=""
-DEF_POSTCMD=""
-DEF_TVDBTIMEOUT="50"
-DEF_TVDBAPIKEY="6DF511BB2A64E0E9"
-#== DefaultsEditBlock===========================================================
+#== DEFAULTSEDITBLOCK (edit these values as appropriate for your system) =======
+def_cfgfile="${HOME}/${prognoext}/${prognoext}.cfg"
+def_fileop="new"
+def_newdir="${HOME}/${prognoext}/DVR"
+def_remcom="no"
+def_filetype="mkv"
+def_notify="none"
+def_vcodec="copy"
+def_vcodecargs=""
+def_acodec="copy"
+def_acodecargs=""
+def_email="user@emailserver.com"
+def_tmpdir="${HOME}/${prognoext}/tmp"
+def_logdir="${HOME}/${prognoext}/log"
+def_dbpasswd="mythtv"
+def_tvdblookup="yes"
+def_nameformat="%T - s%se%e - %E [%Y-%m-%d]"
+def_folderformat="/%T/season %s"
+def_precmd=""
+def_postcmd=""
+def_tvdbtimeout="50"
+def_tvdbapikey="6DF511BB2A64E0E9"
+#== DEFAULTSEDITBLOCK===========================================================
 
-# We put a little code above for ease of editing defaults
+# we put a little code above for ease of editing defaults
 # from here on, all code is wrapped in functions and the last line of the
-# file calls our main function.  This construct allows us to forward reference
+# file calls our main function.  this construct allows us to forward reference
 # worker functions and keeps the code much more readable
 #
 function main ()
@@ -96,113 +95,113 @@ function main ()
 }
 
 #-------------------------------------------------------------------------------
-# Option parsing helper function
-# Usage: var=$( optionvalue "option_search_string" "default_value" )
-# Uses globals OPTIONSTR, CFGOPTIONSTR
+# option parsing helper function
+# usage: var=$( optionvalue "option_search_string" "default_value" )
+# uses globals optionstr, cfgoptionstr
 #
 function optionvalue()
 {
-    OPT_THIS="${2}"
-    if [ -n "`echo "${OPTIONSTR}" | grep ${1}`" ]; then
-        OPT_THIS="`echo "${OPTIONSTR}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
+    opt_this="${2}"
+    if [ -n "`echo "${optionstr}" | grep ${1}`" ]; then
+        opt_this="`echo "${optionstr}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
     else
-        if [ -n "`echo "${CFGOPTIONSTR}" | grep ${1}`" ]; then
-            OPT_THIS="`echo "${CFGOPTIONSTR}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
+        if [ -n "`echo "${cfgoptionstr}" | grep ${1}`" ]; then
+            opt_this="`echo "${cfgoptionstr}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
         fi
     fi
-    echo "${OPT_THIS}"
+    echo "${opt_this}"
 }
 
 #-------------------------------------------------------------------------------
-# Parse options from OPTIONSTR and/or config file
-# Precedence: command line, config file, default
+# parse options from optionstr and/or config file
+# precedence: command line, config file, default
 #
 function parseoptions ()
 {
-    CFGOPTIONSTR=""
-    OPT_CFGFILE=$( optionvalue "cfgfile=" "${DEF_CFGFILE}" )
-    #Look for options in config file too
-    CFGOPTIONSTR="`grep '^options=' "${OPT_CFGFILE}"`"
+    cfgoptionstr=""
+    opt_cfgfile=$( optionvalue "cfgfile=" "${def_cfgfile}" )
+    #look for options in config file too
+    cfgoptionstr="`grep '^options=' "${opt_cfgfile}"`"
     
-    OPT_FILEOP=$( optionvalue "fileop=" "${DEF_FILEOP}" )
-    OPT_NEWDIR=$( optionvalue "newdir=" "${DEF_NEWDIR}" )
-    OPT_REMCOM=$( optionvalue "remcom=" "${DEF_REMCOM}" )
-    OPT_FILETYPE=$( optionvalue "filetype=" "${DEF_FILETYPE}" )
-    OPT_ACODEC=$( optionvalue "acodec=" "${DEF_ACODEC}" )
-    OPT_ACODECARGS=$( optionvalue "acodecargs=" "${DEF_ACODECARGS}" )
-    OPT_VCODEC=$( optionvalue "vcodec=" "${DEF_VCODEC}" )
-    OPT_VCODECARGS=$( optionvalue "vcodecargs=" "${DEF_VCODECARGS}" )
-    OPT_NOTIFY=$( optionvalue "notify=" "${DEF_NOTIFY}" )
-    OPT_EMAIL=$( optionvalue "email=" "${DEF_EMAIL}" )
-    OPT_TMPDIR=$( optionvalue "tmpdir=" "${DEF_TMPDIR}" )
-    OPT_LOGDIR=$( optionvalue "logdir=" "${DEF_LOGDIR}" )
-    OPT_DBPASSWD=$( optionvalue "dbpasswd=" "${DEF_DBPASSWD}" )
-    OPT_TVDBLOOKUP=$( optionvalue "tvdblookup=" "${DEF_TVDBLOOKUP}" )
-    OPT_NAMEFORMAT=$( optionvalue "nameformat=" "${DEF_NAMEFORMAT}" )
-    OPT_FOLDERFORMAT=$( optionvalue "folderformat=" "${DEF_FOLDERFORMAT}" )
-    OPT_PRECMD=$( optionvalue "precmd=" "${DEF_PRECMD}" )
-    OPT_POSTCMD=$( optionvalue "postcmd=" "${DEF_POSTCMD}" )
-    OPT_TVDBTIMEOUT=$( optionvalue "tvdbtimeout=" "${DEF_TVDBTIMEOUT}" )
-    OPT_TVDBAPIKEY=$( optionvalue "tvdbapikey=" "${DEF_TVDBAPIKEY}" )
+    opt_fileop=$( optionvalue "fileop=" "${def_fileop}" )
+    opt_newdir=$( optionvalue "newdir=" "${def_newdir}" )
+    opt_remcom=$( optionvalue "remcom=" "${def_remcom}" )
+    opt_filetype=$( optionvalue "filetype=" "${def_filetype}" )
+    opt_acodec=$( optionvalue "acodec=" "${def_acodec}" )
+    opt_acodecargs=$( optionvalue "acodecargs=" "${def_acodecargs}" )
+    opt_vcodec=$( optionvalue "vcodec=" "${def_vcodec}" )
+    opt_vcodecargs=$( optionvalue "vcodecargs=" "${def_vcodecargs}" )
+    opt_notify=$( optionvalue "notify=" "${def_notify}" )
+    opt_email=$( optionvalue "email=" "${def_email}" )
+    opt_tmpdir=$( optionvalue "tmpdir=" "${def_tmpdir}" )
+    opt_logdir=$( optionvalue "logdir=" "${def_logdir}" )
+    opt_dbpasswd=$( optionvalue "dbpasswd=" "${def_dbpasswd}" )
+    opt_tvdblookup=$( optionvalue "tvdblookup=" "${def_tvdblookup}" )
+    opt_nameformat=$( optionvalue "nameformat=" "${def_nameformat}" )
+    opt_folderformat=$( optionvalue "folderformat=" "${def_folderformat}" )
+    opt_precmd=$( optionvalue "precmd=" "${def_precmd}" )
+    opt_postcmd=$( optionvalue "postcmd=" "${def_postcmd}" )
+    opt_tvdbtimeout=$( optionvalue "tvdbtimeout=" "${def_tvdbtimeout}" )
+    opt_tvdbapikey=$( optionvalue "tvdbapikey=" "${def_tvdbapikey}" )
 }
 
 #-------------------------------------------------------------------------------
-#Email notification functions using ssmpt
+#email notification functions using ssmpt
 #
 function donotify()
 {
-    if [ -n "${OPT_EMAIL}" ]; then
-        echo -e "$1" | ssmtp "$OPT_EMAIL"
+    if [ -n "${opt_email}" ]; then
+        echo -e "$1" | ssmtp "$opt_email"
     fi
 }
 
 function startnotify ()
 {
-  MAILTEXTSTART="Subject:${PROGNOEXT} Start\n\n${PROGNOEXT} started processing ${dbtitle} ${dbtitleep} ${dbstarttime} ${dbchanid}\n"
-  if [ "$OPT_NOTIFY" == "startend" ] || [ "$OPT_NOTIFY" == "start" ]; then
-    donotify "$MAILTEXTSTART" 
+  mailtextstart="Subject:${prognoext} start\n\n${prognoext} started processing ${dbtitle} ${dbtitleep} ${dbstarttime} ${dbchanid}\n"
+  if [ "$opt_notify" == "startend" ] || [ "$opt_notify" == "start" ]; then
+    donotify "$mailtextstart" 
   fi
 }
 
 function quiterrorearly ()
 {
-  MAILTEXTERREARLY="Subject:${PROGNOEXT} Fail\n\n${PROGNOEXT} error processing ${ORIGFILE}\n"
-  if [ "$OPT_NOTIFY" == "startend" ] || [ "$OPT_NOTIFY" == "end" ] || [ "$OPT_NOTIFY" == "error" ]; then
-    donotify "$MAILTEXTERREARLY" 
+  mailtexterrearly="Subject:${prognoext} fail\n\n${prognoext} error processing ${origfile}\n"
+  if [ "$opt_notify" == "startend" ] || [ "$opt_notify" == "end" ] || [ "$opt_notify" == "error" ]; then
+    donotify "$mailtexterrearly" 
   fi
   exit 1
 }
 
 function quiterror ()
 {
-  MAILTEXTERR="Subject:${PROGNOEXT} Fail\n\n${PROGNOEXT} error processing ${dbtitle} ${dbtitleep} ${dbstarttime} ${dbchanid}\n"
-  if [ "$OPT_NOTIFY" == "startend" ] || [ "$OPT_NOTIFY" == "end" ] || [ "$OPT_NOTIFY" == "error" ]; then
-    donotify "$MAILTEXTERR"
+  mailtexterr="Subject:${prognoext} fail\n\n${prognoext} error processing ${dbtitle} ${dbtitleep} ${dbstarttime} ${dbchanid}\n"
+  if [ "$opt_notify" == "startend" ] || [ "$opt_notify" == "end" ] || [ "$opt_notify" == "error" ]; then
+    donotify "$mailtexterr"
   fi
   exit 1
 }
 
 function quitsuccess ()
 {
-  if [ "${OPT_FILEOP}" == "new" ]
-    MAILTEXT="Subject:${PROGNOEXT} Success\n\n${PROGNOEXT} successfully processed ${ORIGFILE} to ${newfile}\n"
+  if [ "${opt_fileop}" == "new" ]; then
+    mailtext="Subject:${prognoext} success\n\n${prognoext} successfully processed ${origfile} to ${newfile}\n"
   else
-    MAILTEXT="Subject:${PROGNOEXT} Success\n\n${PROGNOEXT} successfully processed ${dbtitle} ${dbtitleep} ${dbstarttime} ${dbchanid}\n"
+    mailtext="Subject:${prognoext} success\n\n${prognoext} successfully processed ${dbtitle} ${dbtitleep} ${dbstarttime} ${dbchanid}\n"
   fi
-  if [ "$OPT_NOTIFY" == "startend" ] || [ "$OPT_NOTIFY" == "end" ]; then
-    donotify "$MAILTEXT"
+  if [ "$opt_notify" == "startend" ] || [ "$opt_notify" == "end" ]; then
+    donotify "$mailtext"
   fi
   exit 0
 }
 
 #-------------------------------------------------------------------------------
-#Check command line usage
+#check command line usage
 #
 function checkusage ()
 {
-    if [ ! -f "$ORIGFILE" ]; then
-        echo "Usage: $PROG /recpath/recfile" [OPTIONSTR]
-        echo "OPTIONSTR is a comma delimited list of options"
+    if [ ! -f "$origfile" ]; then
+        echo "usage: $prog /recpath/recfile" [optionstr]
+        echo "optionstr is a comma delimited list of options"
         echo "fileop=[archive|replace|new]"
         echo "newdir=/myvids/dir"
         echo "remcom=[yes|no]"
@@ -218,18 +217,18 @@ function checkusage ()
         echo "logdir=/path/to/logdir"
         echo "dbpasswd=mythtv_user_password"
         echo "tvdblookup=[yes|no]"
-        echo "nameformat=%T - s%se%e - %E [%Y-%m-%d %t]"
-        echo "folderformat=/%T/Season %s"
+        echo "nameformat=%T - s%se%e - %E [%Y-%m-%d %h]"
+        echo "folderformat=/%T/season %s"
         echo "precmd=bash_command_string"
         echo "postcmd=bash_command_string"
         echo ""
-        echo "$PROG: file doesn't exist, aborting."
+        echo "$prog: file doesn't exist, aborting."
         quiterrorearly
     fi
 }
 
 #-------------------------------------------------------------------------------
-# Init some variables, open the logfile
+# init some variables, open the logfile
 # run before values pulled from db
 #
 function init ()
@@ -237,31 +236,31 @@ function init ()
     #-------------------------------------------------------------------------------
     #split directory and filename
     #
-    RECDIR=`dirname $ORIGFILE`
-    BASENAME=`basename $ORIGFILE`
-    BASENOEXT=${BASENAME%.*}
-    ARCHIVEDIR="$RECDIR/archive"
+    recdir=`dirname $origfile`
+    basename=`basename $origfile`
+    basenoext=${basename%.*}
+    archivedir="$recdir/archive"
     
     #
     #one log file for each recording
     #
-    logfile="${OPT_LOGDIR}/${BASENAME}.log"
+    logfile="${opt_logdir}/${basename}.log"
     >${logfile}
     
     #start log file with date header
-    echo "$PROG: Starting `date`" >>${logfile}
+    echo "$prog: starting `date`" >>${logfile}
     
 
     # make sure we have a sane environment
     if [ -z "`which ffmpeg`" ]; then
-        echo "$PROG: FFMpeg not present in the path. Adjust environment or install ffmpeg" >>${logfile}
+        echo "$prog: ffmpeg not present in the path. adjust environment or install ffmpeg" >>${logfile}
         quiterrorearly
     fi
     
 }
 
 #-------------------------------------------------------------------------------
-# Notify start do precmd
+# notify start do precmd
 # run after values pulled from db
 #
 
@@ -269,16 +268,16 @@ function initp2 ()
 {
 
     #
-    #Send start notification if requested
+    #send start notification if requested
     startnotify
 
     #
-    # Execute precmd if specified
-    # Note, this could be dangerous depending on script context
-    # We should be running as user mythtv with limited permissions
-    if [ -n "${OPT_PRECMD}" ]; then
-        EVALSTR=`echo ${OPT_PRECMD} | sed 's/%{/${/g'`
-        eval ${EVALSTR}
+    # execute precmd if specified
+    # note, this could be dangerous depending on script context
+    # we should be running as user mythtv with limited permissions
+    if [ -n "${opt_precmd}" ]; then
+        evalstr=`echo ${opt_precmd} | sed 's/%{/${/g'`
+        eval ${evalstr}
     fi
 }
 
@@ -287,20 +286,20 @@ function initp2 ()
 #
 function querydb ()
 {
-    DBHostName="localhost"
-    DBUserName="mythtv"
-    DBPassword="$OPT_DBPASSWD"
-    DBName="mythconverg"
-    #connect to DB
-    mysqlconnect="mysql -N -h$DBHostName -u$DBUserName -p$DBPassword $DBName"
+    dbhostname="localhost"
+    dbusername="mythtv"
+    dbpassword="$opt_dbpasswd"
+    dbname="mythconverg"
+    #connect to db
+    mysqlconnect="mysql -N -h$dbhostname -u$dbusername -p$dbpassword $dbname"
     export mysqlconnect
     
     #determine chanid and starttime from recorded table
-    dbchanid=`echo "select chanid from recorded where basename=\"$BASENAME\";" | $mysqlconnect`
-    dbstarttime=`echo "select starttime from recorded where basename=\"$BASENAME\";" | $mysqlconnect`
+    dbchanid=`echo "select chanid from recorded where basename=\"$basename\";" | $mysqlconnect`
+    dbstarttime=`echo "select starttime from recorded where basename=\"$basename\";" | $mysqlconnect`
     #get title and subtitle recorded table
-    dbtitle=`echo "select title from recorded where basename=\"$BASENAME\";" | $mysqlconnect`
-    dbtitleep=`echo "select subtitle from recorded where basename=\"$BASENAME\";" | $mysqlconnect`
+    dbtitle=`echo "select title from recorded where basename=\"$basename\";" | $mysqlconnect`
+    dbtitleep=`echo "select subtitle from recorded where basename=\"$basename\";" | $mysqlconnect`
     
     echo "chanid: ${dbchanid}   dbstarttime: ${dbstarttime}"  >>${logfile}
     echo "dbtitle: ${dbtitle}   dbtitleep: ${dbtitleep}"  >>${logfile}
@@ -308,16 +307,16 @@ function querydb ()
     
     if [ -z "$dbchanid" ] || [ -z "$dbstarttime" ]
     then
-        echo "$PROG: Recording not found in MythTV database, script aborted." >>${logfile}
+        echo "$prog: recording not found in mythtv database, script aborted." >>${logfile}
         quiterrorearly
     fi
     
-    #determine FPS (frames per second) from db, which is used to determine the seek time to extract video clips
-    fps=$(echo "scale=10;`echo "select data from recordedmarkup where chanid=$dbchanid AND starttime='$dbstarttime' and type=32" | $mysqlconnect` / 1000.0" | bc)
+    #determine fps (frames per second) from db, which is used to determine the seek time to extract video clips
+    fps=$(echo "scale=10;`echo "select data from recordedmarkup where chanid=$dbchanid and starttime='$dbstarttime' AND type=32" | $mysqlconnect` / 1000.0" | bc)
     
     if [ -z "$fps" ]
     then
-        echo "$PROG: Frames per second value not found in MythTV database, script aborted." >>${logfile}
+        echo "$prog: frames per second value not found in mythtv database, script aborted." >>${logfile}
         quiterrorearly
     fi
     
@@ -325,55 +324,55 @@ function querydb ()
 
     
 #-------------------------------------------------------------------------------
-# Transcode or remux the video file possibly removing commercials
+# transcode or remux the video file possibly removing commercials
 #
 function transcodecut ()
 {
     #tmp clip directory
-    if [ -z "`ls "${OPT_TMPDIR}"/clips 2>/dev/null`" ]; then
-        mkdir -p "${OPT_TMPDIR}"/clips
+    if [ -z "`ls "${opt_tmpdir}"/clips 2>/dev/null`" ]; then
+        mkdir -p "${opt_tmpdir}"/clips
     fi
     
     
-    #DEBUG
-    #Uncomment to force commercial flagging
+    #debug
+    #uncomment to force commercial flagging
     #mythutil --chanid $dbchanid --starttime "$dbstarttime" --clearskiplist 
     
-    CUTLIST="`mythutil --chanid $dbchanid --starttime "$dbstarttime" --getskiplist | grep "Commercial Skip List" | sed 's/Commercial Skip List: $//'`"
+    cutlist="`mythutil --chanid $dbchanid --starttime "$dbstarttime" --getskiplist | grep "Commercial Skip List" | sed 's/Commercial Skip List: $//'`"
     
-    if [ ${#CUTLIST} -le 1 ]; then
-        echo "$PROG: no skiplist found....generating new skiplist" >>${logfile}
+    if [ ${#cutlist} -le 1 ]; then
+        echo "$prog: no skiplist found....generating new skiplist" >>${logfile}
         mythcommflag --chanid $dbchanid --starttime "$dbstarttime" 
-        CUTLIST="`mythutil --chanid $dbchanid --starttime "$dbstarttime" --getskiplist | grep "Commercial Skip List" | sed 's/Commercial Skip List: $//'`"
+        cutlist="`mythutil --chanid $dbchanid --starttime "$dbstarttime" --getskiplist | grep "Commercial Skip List" | sed 's/Commercial Skip List: $//'`"
     else
-        echo "$PROG: using existing skiplist" >>${logfile}
+        echo "$prog: using existing skiplist" >>${logfile}
     fi
     
-    echo "$PROG: Skiplist:$CUTLIST Length:${#CUTLIST}" >>${logfile}
+    echo "$prog: skiplist:$cutlist length:${#cutlist}" >>${logfile}
     
     
-    #If OPT_REMCOM is no make cutlist one entry that spans entire video
+    #if opt_remcom is no make cutlist one entry that spans entire video
     #
-    if [ "$OPT_REMCOM" == "no" ]; then
-        CUTLIST="0-2600000"
+    if [ "$opt_remcom" == "no" ]; then
+        cutlist="0-2600000"
     else
         #cutlist provides a list of frames in the format start-end,[start1-end1,....] to cut 
         #we swap this list so that it provides the ranges of video we want in the format
         #  start-end start1:end1 ....
-        CUTLIST=`mythutil --chanid $dbchanid --starttime "$dbstarttime" --getskiplist | grep "Commercial Skip List" | sed 's/Commercial Skip List: //' | \
+        cutlist=`mythutil --chanid $dbchanid --starttime "$dbstarttime" --getskiplist | grep "Commercial Skip List" | sed 's/Commercial Skip List: //' | \
         sed 's/-/ /g' | sed 's/^\|$/-/g' | sed 's/,/-/g'`
     fi
     
-    #!!!Always use matroska for clip containers or use specified file format??
-    echo "$PROG: ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss STARTFRAME -t DURATION ${OPT_TMPDIR}/clips/${BASENOEXT}_clip#.mkv" >>${logfile}
+    #!!!always use matroska for clip containers or use specified file format??
+    echo "$prog: ffmpeg -i ${recdir}/${basename} -acodec ${opt_acodec} ${opt_acodecargs} -vcodec ${opt_vcodec} ${opt_vcodecargs} -f matroska -ss startframe -t duration ${opt_tmpdir}/clips/${basenoext}_clip#.mkv" >>${logfile}
     
     clipcount=0
-    for i in ${CUTLIST}
+    for i in ${cutlist}
     do
         start=`echo $i | sed 's/ //g' | sed 's/^\(.*\)-.*$/\1/'`
         end=`echo $i | sed 's/ //g' | sed 's/^.*-\(.*\)$/\1/'`
     
-        echo "$PROG: Clip:$clipcount  Start:$start  End:$end" >>${logfile}
+        echo "$prog: clip:$clipcount  start:$start  end:$end" >>${logfile}
     
         #if $start is empty, deal with it
         if [ -z $start ]; then
@@ -394,44 +393,44 @@ function transcodecut ()
         end=$(echo "scale=8; $end / $fps" | bc -l)
         duration=`echo "$end - $start" | bc -l`	
             printf -v clipstr "%03d" ${clipcount}
-        ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss $start -t $duration ${OPT_TMPDIR}/clips/${BASENOEXT}_${clipstr}.mkv &>>${logfile}
+        ffmpeg -i ${recdir}/${basename} -acodec ${opt_acodec} ${opt_acodecargs} -vcodec ${opt_vcodec} ${opt_vcodecargs} -f matroska -ss $start -t $duration ${opt_tmpdir}/clips/${basenoext}_${clipstr}.mkv &>>${logfile}
         elif [ -z "$end" ]; then
         clipcount=$((++clipcount))
             printf -v clipstr "%03d" ${clipcount}
-            ffmpeg -i ${RECDIR}/${BASENAME} -acodec ${OPT_ACODEC} ${OPT_ACODECARGS} -vcodec ${OPT_VCODEC} ${OPT_VCODECARGS} -f matroska -ss ${start} ${OPT_TMPDIR}/clips/${BASENOEXT}_${clipstr}.mkv &>>${logfile}
+            ffmpeg -i ${recdir}/${basename} -acodec ${opt_acodec} ${opt_acodecargs} -vcodec ${opt_vcodec} ${opt_vcodecargs} -f matroska -ss ${start} ${opt_tmpdir}/clips/${basenoext}_${clipstr}.mkv &>>${logfile}
         fi
     
     done
     
-    echo "#start of list: ${OPT_TMPDIR}/clips/${BASENOEXT}_###" >"${OPT_TMPDIR}/clips/${BASENOEXT}.lst"
-    for i in `ls ${OPT_TMPDIR}/clips/${BASENOEXT}_* | sort`
+    echo "#start of list: ${opt_tmpdir}/clips/${basenoext}_###" >"${opt_tmpdir}/clips/${basenoext}.lst"
+    for i in `ls ${opt_tmpdir}/clips/${basenoext}_* | sort`
     do
-        echo "file '$i'" >>"${OPT_TMPDIR}/clips/${BASENOEXT}.lst"
+        echo "file '$i'" >>"${opt_tmpdir}/clips/${basenoext}.lst"
     done
-    echo "#end of list" >>"${OPT_TMPDIR}/clips/${BASENOEXT}.lst"
+    echo "#end of list" >>"${opt_tmpdir}/clips/${basenoext}.lst"
     
-    if [ -f ${RECDIR}/${BASENOEXT}.${OPT_FILETYPE} ]; then
-        rm -f ${RECDIR}/${BASENOEXT}.${OPT_FILETYPE}
+    if [ -f ${recdir}/${basenoext}.${opt_filetype} ]; then
+        rm -f ${recdir}/${basenoext}.${opt_filetype}
     fi
     
-    ffmpeg -f concat -i "${OPT_TMPDIR}/clips/${BASENOEXT}.lst" -c copy ${RECDIR}/${BASENOEXT}.${OPT_FILETYPE} &>>${logfile}
+    ffmpeg -f concat -i "${opt_tmpdir}/clips/${basenoext}.lst" -c copy ${recdir}/${basenoext}.${opt_filetype} &>>${logfile}
     
-    #cleanup OPT_TMPDIR/clips
-    rm -f -r "${OPT_TMPDIR}/clips"
+    #cleanup opt_tmpdir/clips
+    rm -f -r "${opt_tmpdir}/clips"
 }
 
 #-------------------------------------------------------------------------------
-# If we are replacing or archiving the MythTV file.  We need to update the DB
+# if we are replacing or archiving the mythtv file.  we need to update the db
 #
 function updatedb ()
 {
-    if [ "$OPT_FILEOP" != "new" ]; then
+    if [ "$opt_fileop" != "new" ]; then
     
         #clear out the old cutlist
         mythutil --chanid $dbchanid --starttime "$dbstarttime" --clearcutlist &>>${logfile}
     
         #we'll need a new filesize to update the db with
-        filesize=$(du ${RECDIR}/${BASENOEXT}.${OPT_FILETYPE} | awk '{print $1}') 
+        filesize=$(du ${recdir}/${basenoext}.${opt_filetype} | awk '{print $1}') 
     
         #update db with new filesize and filename
         cat <<EOF | $mysqlconnect
@@ -440,7 +439,7 @@ UPDATE
 SET
     cutlist = 0,
     filesize = ${filesize},
-    basename = "${BASENOEXT}.${OPT_FILETYPE}"
+    basename = "${basenoext}.${opt_filetype}"
 WHERE
     chanid = ${dbchanid} AND
     starttime = "${dbstarttime}";
@@ -472,122 +471,122 @@ EOF
 #
 function archivedelete ()
 {
-    # Archive original if requested
-    if [ "${OPT_FILEOP}" == "replace" ]; then
-        echo "$PROG: removing original file ${RECDIR}/${BASENAME}" >>${logfile}
-        rm -f "${RECDIR}/${BASENAME}"
-        ERROR=$?
-        if [ $ERROR -ne 0 ]; then
-                echo "$PROG: failed to remove ${RECDIR}/${BASENAME}" >>${logfile}
+    # archive original if requested
+    if [ "${opt_fileop}" == "replace" ]; then
+        echo "$prog: removing original file ${recdir}/${basename}" >>${logfile}
+        rm -f "${recdir}/${basename}"
+        error=$?
+        if [ $error -ne 0 ]; then
+                echo "$prog: failed to remove ${recdir}/${basename}" >>${logfile}
         fi
-    elif [ "${OPT_FILEOP}" == "archive" ]; then
-        if [ -z "`ls "${ARCHIVEDIR}"`" ]; then
-            mkdir -p "${ARCHIVEDIR}"
+    elif [ "${opt_fileop}" == "archive" ]; then
+        if [ -z "`ls "${archivedir}"`" ]; then
+            mkdir -p "${archivedir}"
         fi
-        echo "$PROG: moving original file to ${ARCHIVEDIR}/${BASENAME}" >>${logfile}
-        mv -f "${RECDIR}/${BASENAME}" "${ARCHIVEDIR}/${BASENAME}"
+        echo "$prog: moving original file to ${archivedir}/${basename}" >>${logfile}
+        mv -f "${recdir}/${basename}" "${archivedir}/${basename}"
     fi
 }
 
 #-------------------------------------------------------------------------------
-#Code from MythSExx
-#Usage: lookupsenum "show name" "episode name"
-#Output: set globals SEASONNUM EPISODENUM (00 if not found)
-#Dependencies: curl, agrep
+#code from mythsexx
+#usage: lookupsenum "show name" "episode name"
+#output: set globals seasonnum episodenum (00 if not found)
+#dependencies: curl, agrep
 #
 function lookupsenum ()
 {
-    local ARGSHOWNAME=$1
-    local ARGEPISODENAME=$2
+    local argshowname=$1
+    local argepisodename=$2
     
-    echo "TheTVDB SEARCH INITIATED AT `date`">>${logfile} 
+    echo "thetvdb search initiated at `date`">>${logfile} 
     
     #tmp working directory
-    if [ -z "`ls "${OPT_TMPDIR}"/tvdb 2>/dev/null`" ]; then
-        mkdir -p "${OPT_TMPDIR}"/tvdb
+    if [ -z "`ls "${opt_tmpdir}"/tvdb 2>/dev/null`" ]; then
+        mkdir -p "${opt_tmpdir}"/tvdb
     fi
 
-    #Set episode name, dir, extension, and showname from the input parameters.
-    local ShowName=$ARGSHOWNAME
-    local epn=`echo $ARGEPISODENAME|sed 's/;.*//'|tr -d [:punct:]`
+    #set episode name, dir, extension, and showname from the input parameters.
+    local showname=$argshowname
+    local epn=`echo $argepisodename|sed 's/;.*//'|tr -d [:punct:]`
     
-    #Check for show translations relating to the show in question.
-    #!!!Read these from our config file
-    if [ -f $OPT_TMPDIR/showtranslations ]; then 
-        local showtranslation=`grep "$ShowName = " "$OPT_TMPDIR/showtranslations"|replace "$ShowName = " ""|replace "$OPT_TMPDIR/showtranslations" ""`		 
+    #check for show translations relating to the show in question.
+    #!!!read these from our config file
+    if [ -f $opt_tmpdir/showtranslations ]; then 
+        local showtranslation=`grep "$showname = " "$opt_tmpdir/showtranslations"|replace "$showname = " ""|replace "$opt_tmpdir/showtranslations" ""`		 
         if [ "$showtranslation" != "$null" ];then 
-            ShowName=$showtranslation
-            echo "USER TRANSLATION: $ARGSHOWNAME = $ShowName">>${logfile}
+            showname=$showtranslation
+            echo "user translation: $argshowname = $showname">>${logfile}
         elif [ "$showtranslation" = "$null" ];then
-            $showtranslation = "Inactive"
+            $showtranslation = "inactive"
         fi
     fi
     
      
-    #####SEARCH FOR SHOW NAME#####
-    echo "SEARCHING: www.TheTvDb.com SHOW NAME: $ShowName EPISODE: $epn">>${logfile}
+    #####search for show name#####
+    echo "searching: www.thetvdb.com show name: $showname episode: $epn">>${logfile}
     #download series info for show, parse into temporary text db- sid.txt shn.txt
-    local tvdbshowname=`echo $ShowName|replace " " "%20"`
+    local tvdbshowname=`echo $showname|replace " " "%20"`
     
-    curl -s -m"$OPT_TVDBTIMEOUT" www.thetvdb.com/api/GetSeries.php?seriesname=$tvdbshowname>${OPT_TMPDIR}/tvdb/working.xml
-    cat ${OPT_TMPDIR}/tvdb/working.xml | grep "<seriesid>"|replace "<seriesid>" ""|replace "</seriesid>" "">${OPT_TMPDIR}/tvdb/sid.txt
-    cat ${OPT_TMPDIR}/tvdb/working.xml | grep "<SeriesName>"|replace "<SeriesName>" ""|replace "</SeriesName>" "">${OPT_TMPDIR}/tvdb/shn.txt
+    curl -s -m"$opt_tvdbtimeout" www.thetvdb.com/api/GetSeries.php?seriesname=$tvdbshowname>${opt_tmpdir}/tvdb/working.xml
+    cat ${opt_tmpdir}/tvdb/working.xml | grep "<seriesid>"|replace "<seriesid>" ""|replace "</seriesid>" "">${opt_tmpdir}/tvdb/sid.txt
+    cat ${opt_tmpdir}/tvdb/working.xml | grep "<SeriesName>"|replace "<SeriesName>" ""|replace "</SeriesName>" "">${opt_tmpdir}/tvdb/shn.txt
     
-    #Use fuzzy logic to make the best match of the show name
-    local serieslinenumber=`agrep -1 -n "${showname:0:29}" ${OPT_TMPDIR}/tvdb/shn.txt|sed 's/:.*//'|grep -m1 ^`
+    #use fuzzy logic to make the best match of the show name
+    local serieslinenumber=`agrep -1 -n "${showname:0:29}" ${opt_tmpdir}/tvdb/shn.txt|sed 's/:.*//'|grep -m1 ^`
     
-    #Get the seriesid based on the showname
-    local seriesid=`sed -n $serieslinenumber'p' ${OPT_TMPDIR}/tvdb/sid.txt|grep -m1 ^`
-    local NewShowName=`sed -n $serieslinenumber'p' ${OPT_TMPDIR}/tvdb/shn.txt|grep -m1 ^`
+    #get the seriesid based on the showname
+    local seriesid=`sed -n $serieslinenumber'p' ${opt_tmpdir}/tvdb/sid.txt|grep -m1 ^`
+    local newshowname=`sed -n $serieslinenumber'p' ${opt_tmpdir}/tvdb/shn.txt|grep -m1 ^`
     
-    #Create folder for database if it does not exist
-    if [ ! -d "${OPT_TMPDIR}/tvdb/$NewShowName" ]; then
-        mkdir ${OPT_TMPDIR}/tvdb/"$NewShowName"
-        echo "creating home OPT_TMPDIR and log file">>${logfile}
+    #create folder for database if it does not exist
+    if [ ! -d "${opt_tmpdir}/tvdb/$newshowname" ]; then
+        mkdir ${opt_tmpdir}/tvdb/"$newshowname"
+        echo "creating home opt_tmpdir and log file">>${logfile}
     fi
-    echo "SEARCH FOUND:""$NewShowName" "ID#:" $seriesid >>${logfile}
+    echo "search found:""$newshowname" "id#:" $seriesid >>${logfile}
     
-    #If series ID is obtained, then get show information.
+    #if series id is obtained, then get show information.
     if [ "$seriesid" != "" ]; then
         
-        #####GET SHOW INFORMATION#####
-        #Strip XML tags
+        #####get show information#####
+        #strip xml tags
         seriesid=`echo $seriesid|tr -d "<seriesid>"|tr -d "</seriesid>"`
         
         #download series info for series id
-        curl -s -m"${OPT_TVDBTIMEOUT}" "http://www.thetvdb.com/api/${OPT_TVDBAPIKEY}/series/$seriesid/all/en.xml">${OPT_TMPDIR}/tvdb"/$NewShowName/$NewShowName.xml"
+        curl -s -m"${opt_tvdbtimeout}" "http://www.thetvdb.com/api/${opt_tvdbapikey}/series/$seriesid/all/en.xml">${opt_tmpdir}/tvdb"/$newshowname/$newshowname.xml"
         
-        #create a folder/file "database" Strip XML tags.  Series, Exx and Sxx are separated into different files
-        if [ -f "${OPT_TMPDIR}/tvdb/$NewShowName/$NewShowName.xml" ]; then 
-            cat "${OPT_TMPDIR}/tvdb/$NewShowName/$NewShowName.xml" | grep "<EpisodeName>"|replace "  <EpisodeName>" ""|replace "</EpisodeName>" ""|tr -d [:punct:]>${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".Ename.txt
-            cat ${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".xml | grep "<SeasonNumber>"|replace "<SeasonNumber>" ""|replace "</SeasonNumber>" ""|replace " " "">${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".S.txt
-            cat ${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".xml | grep "<EpisodeNumber>"|replace "<EpisodeNumber>" ""|replace "</EpisodeNumber>" ""|replace " " "">${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".E.txt
-        elif [ ! -f "${OPT_TMPDIR}/tvdb/$NewShowName/$NewShowName.xml" ]; then
-            echo "***FAILURE: curl -s -m$OPT_TVDBTIMEOUT http://www.thetvdb.com/api/$OPT_TVDBAPIKEY/series/$seriesid/all/en.xml">>${logfile}
+        #create a folder/file "database" strip xml tags.  series, exx and sxx are separated into different files
+        if [ -f "${opt_tmpdir}/tvdb/$newshowname/$newshowname.xml" ]; then 
+            cat "${opt_tmpdir}/tvdb/$newshowname/$newshowname.xml" | grep "<EpisodeName>"|replace "  <EpisodeName>" ""|replace "</EpisodeName>" ""|tr -d [:punct:]>${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".ename.txt
+            cat ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".xml | grep "<SeasonNumber>"|replace "<SeasonNumber>" ""|replace "</SeasonNumber>" ""|replace " " "">${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".s.txt
+            cat ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".xml | grep "<EpisodeNumber>"|replace "<EpisodeNumber>" ""|replace "</EpisodeNumber>" ""|replace " " "">${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".e.txt
+        elif [ ! -f "${opt_tmpdir}/tvdb/$newshowname/$newshowname.xml" ]; then
+            echo "***failure: curl -s -m$opt_tvdbtimeout http://www.thetvdb.com/api/$opt_tvdbapikey/series/$seriesid/all/en.xml">>${logfile}
         fi
         
         #check if files were created and generate message
-        if [ -f ${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".Ename.txt ]; then
-            echo "LOCAL DATABASE UPDATED:${OPT_TMPDIR}/tvdb/$NewShowName">>${logfile}
-        elif [ ! -f "${OPT_TMPDIR}/tvdb/$NewShowName/$NewShowName.Ename.txt" ]; then
-            echo "*** PERMISSION ERROR ${OPT_TMPDIR}/tvdb/$NewShowName/">>${logfile}
+        if [ -f ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".ename.txt ]; then
+            echo "local database updated:${opt_tmpdir}/tvdb/$newshowname">>${logfile}
+        elif [ ! -f "${opt_tmpdir}/tvdb/$newshowname/$newshowname.ename.txt" ]; then
+            echo "*** permission error ${opt_tmpdir}/tvdb/$newshowname/">>${logfile}
         fi
         
         
-        #####PROCESS SHOW INFORMATION#####
+        #####process show information#####
         #grep use fuzzy logic to find the closest show name from the locally created database and return absolute episode number
-        local absolouteEpisodeNumber=`agrep -1 -n "${epn:0:29}" "${OPT_TMPDIR}/tvdb""/""$NewShowName""/""$NewShowName"".Ename.txt"|grep -m1 ^|sed 's/:.*//'`
-        echo DEFINED ABSOLOUTE EPISODE NUMBER: $absolouteEpisodeNumber>>${logfile}
+        local absolouteepisodenumber=`agrep -1 -n "${epn:0:29}" "${opt_tmpdir}/tvdb""/""$newshowname""/""$newshowname"".ename.txt"|grep -m1 ^|sed 's/:.*//'`
+        echo defined absoloute episode number: $absolouteepisodenumber>>${logfile}
         
-        #if line match is obtained, then gather Sxx and Exx
-        if [ "$absolouteEpisodeNumber" !=  ""  ]; then
-            epn=`sed -n $absolouteEpisodeNumber'p' ${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".Ename.txt|sed 's/;.*//'`
+        #if line match is obtained, then gather sxx and exx
+        if [ "$absolouteepisodenumber" !=  ""  ]; then
+            epn=`sed -n $absolouteepisodenumber'p' ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".ename.txt|sed 's/;.*//'`
         
             #gather series and episode names from files created earlier.
-            local exx=`sed -n $absolouteEpisodeNumber'p' ${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".E.txt`
-            local sxx=`sed -n $absolouteEpisodeNumber'p' ${OPT_TMPDIR}/tvdb/"$NewShowName"/"$NewShowName".S.txt`
+            local exx=`sed -n $absolouteepisodenumber'p' ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".e.txt`
+            local sxx=`sed -n $absolouteepisodenumber'p' ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".s.txt`
         
-            # Single digit episode and show names are not allowed Ex and Sx replaced with Exx Sxx
+            # single digit episode and show names are not allowed ex and sx replaced with exx sxx
             if [ "$exx" -lt 10 ]; then 
                 exx=`echo 0$exx`
             elif [ "$exx" -gt 9 ]; then 
@@ -599,61 +598,61 @@ function lookupsenum ()
                 sxx=`echo $sxx`
             fi
         fi
-        echo "EPISODE:$epn NUMBER:$absolouteEpisodeNumber $sxx$exx">>${logfile}
+        echo "episode:$epn number:$absolouteepisodenumber $sxx$exx">>${logfile}
         #if series id is not obtained
     elif [ "$seriesid" == "" ]; then 
-        echo "series was not found the tvdb may be down try renaming $ARGSHOWNAME">>${logfile}
+        echo "series was not found the tvdb may be down try renaming $argshowname">>${logfile}
     fi
     
-    #cleanup OPT_TMPDIR/tvdb
-    rm -f -r "${OPT_TMPDIR}/tvdb"
+    #cleanup opt_tmpdir/tvdb
+    rm -f -r "${opt_tmpdir}/tvdb"
 
-    #Set global season and episode number strings.  00 is used to indicate 'not found'
+    #set global season and episode number strings.  00 is used to indicate 'not found'
     if [ "$exx" = "" ]; then
-            SEASONNUM="00"
-            EPISODENUM="00"
+            seasonnum="00"
+            episodenum="00"
     else
-            SEASONNUM="$sxx"
-            EPISODENUM="$exx"
+            seasonnum="$sxx"
+            episodenum="$exx"
     fi
 }
 
 
 #-------------------------------------------------------------------------------
-# Function to look up TV season and episode information
-# Used to help rename when we are keeping the original MythTV file
+# function to look up tv season and episode information
+# used to help rename when we are keeping the original mythtv file
 #
 function tv_lookup ()
 {
     #
-    # Uses globals:  SHOWFIELD EPFIELD
-    # Sets globals: SEASONNUM EPISODENUM
-    # Uses config file: OPT_CFGFILE
+    # uses globals:  showfield epfield
+    # sets globals: seasonnum episodenum
+    # uses config file: opt_cfgfile
     #
     #
     
-    # Default values if lookup fails
-    SEASONNUM="00"
-    EPISODENUM="00"
+    # default values if lookup fails
+    seasonnum="00"
+    episodenum="00"
 
     # nolookup=showtitle in config file
     # nolookup will prevent season/episode lookup for a show or globally if * wildcard is specified.
-    local NOLOOKUPG 
-    local NOLOOKUPL
+    local nolookupg 
+    local nolookupl
     
-    #Get global settings from command line or config
-    if [ "${OPT_TVDBLOOKUP}" = "no" ]; then
-        NOLOOKUPG="*"
+    #get global settings from command line or config
+    if [ "${opt_tvdblookup}" = "no" ]; then
+        nolookupg="*"
     else
-        NOLOOKUPG=$(cat "$OPT_CFGFILE" | grep "^nolookup=\*$") 
+        nolookupg=$(cat "$opt_cfgfile" | grep "^nolookup=\*$") 
     fi
     #grep a config file to see if we should do a lookup for this show 
-    NOLOOKUPL=$(cat "$OPT_CFGFILE" | grep "^nolookup=$SHOWFIELD$") 
+    nolookupl=$(cat "$opt_cfgfile" | grep "^nolookup=$showfield$") 
 
-    if [ -z "$NOLOOKUPL" ] && [ -z "$NOLOOKUPG" ]; then 
-        #Get Season and Episode string
-        #titlesub2se sets globals SEASONNUM and EPISODENUM
-        lookupsenum "$SHOWFIELD" "$EPFIELD"
+    if [ -z "$nolookupl" ] && [ -z "$nolookupg" ]; then 
+        #get season and episode string
+        #titlesub2se sets globals seasonnum and episodenum
+        lookupsenum "$showfield" "$epfield"
     fi 
 }
 
@@ -674,38 +673,38 @@ function replacetemplate ()
     #%h hour_min_sec
     #%u unique episode number
 
-    #parse RECDATEFIELD to get date related fields
-    IFS='-' read -a datefields <<< "${RECDATEFIELD}"
+    #parse recdatefield to get date related fields
+    ifs='-' read -a datefields <<< "${recdatefield}"
     year4d="${datefields[0]}"
     month2d="${datefields[1]}"
-    IFS=' ' read -a dayfields <<< "${datefields[2]}"
+    ifs=' ' read -a dayfields <<< "${datefields[2]}"
     day2d="${dayfields[0]}"
     rectime="${dayfields[1]}"
     year2d=${year4d:(-2)}
 
     #log name components
-    echo "$PROG formatstr: ${newstr}" >>${logfile}
-    echo "$PROG showinfo: ${SHOWFIELD} ; ${EPFIELD} ; ${SEASONNUM} ; ${EPISODENUM}" >>${logfile}
-    echo "$PROG datefields: ${year4d} ; ${year2d} ; ${month2d} ; ${day2d} ; ${rectime}" >>${logfile}
+    echo "$prog formatstr: ${newstr}" >>${logfile}
+    echo "$prog showinfo: ${showfield} ; ${epfield} ; ${seasonnum} ; ${episodenum}" >>${logfile}
+    echo "$prog datefields: ${year4d} ; ${year2d} ; ${month2d} ; ${day2d} ; ${rectime}" >>${logfile}
 
-    newstr=`echo "${newstr}" | sed "s/%T/${SHOWFIELD}/g; s/%E/${EPFIELD}/g; s/%s/${SEASONNUM}/g; s/%e/${EPISODENUM}/g"`
+    newstr=`echo "${newstr}" | sed "s/%T/${showfield}/g; s/%E/${epfield}/g; s/%s/${seasonnum}/g; s/%e/${episodenum}/g"`
     newstr=`echo "${newstr}" | sed "s/%y/${year2d}/g; s/%m/${month2d}/g; s/%d/${day2d}/g; s/%Y/${year4d}/g; s/%h/${rectime}/g"`
     echo "${newstr}"
  
     #log the replaced template   
-    echo "$PROG replacedstr: ${newstr}" >>${logfile}
+    echo "$prog replacedstr: ${newstr}" >>${logfile}
 }
 
 #-------------------------------------------------------------------------------
-# Build OUTNAME and OUTDIR according to nameformat and folderformat
+# build outname and outdir according to nameformat and folderformat
 #
 function getnewname ()
 {
 
-    dirfrag=$( replacetemplate "${OPT_FOLDERFORMAT}" )
-    OUTDIR="${OPT_NEWDIR}/${dirfrag}"
+    dirfrag=$( replacetemplate "${opt_folderformat}" )
+    outdir="${opt_newdir}/${dirfrag}"
 
-    namefrag=$( replacetemplate "${OPT_NAMEFORMAT}" )
+    namefrag=$( replacetemplate "${opt_nameformat}" )
     #if format contains %u, replace with unique episode number
     if [ -n "`echo "${namefrag}" | grep "%u"`" ]; then
         indx=1
@@ -713,7 +712,7 @@ function getnewname ()
         do
             #check for e## pattern in outdir
             chkstr="`printf "e%02d" ${indx}`"
-            if [ -z "`ls "${OUTDIR}" | grep -i ${chkstr}`" ]; then
+            if [ -z "`ls "${outdir}" | grep -i ${chkstr}`" ]; then
                 break
             fi
             ((indx++))
@@ -722,62 +721,62 @@ function getnewname ()
         namefrag="`printf "${chkstr}" ${indx}`"
     fi
 
-    OUTNAME="${namefrag}"
+    outname="${namefrag}"
 }
 
 #-------------------------------------------------------------------------------
-# If we are keeping the original MythTV file, we want to rename the 
+# if we are keeping the original mythtv file, we want to rename the 
 # file based on the nameformat and folderformat, then move the file to a new directory
-# A MythTV user job handles this by calling like:
-# mythmunge.sh "%DIR%/%FILE%" "fileop=new,newdir=/mnt/VidTV/DVR"
+# a mythtv user job handles this by calling like:
+# mythmunge.sh "%dir%/%file%" "fileop=new,newdir=/mnt/vidtv/dvr"
 #
 function namemovenew ()
 {
-    if [ "$OPT_FILEOP" == "new" ]; then
-         #Replace all bad filename characters
-         SHOWFIELD=$(echo ${dbtitle} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
-         EPFIELD=$(echo ${dbtitleep} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
-         RECDATEFIELD=$(echo ${dbstarttime} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
+    if [ "$opt_fileop" == "new" ]; then
+         #replace all bad filename characters
+         showfield=$(echo ${dbtitle} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
+         epfield=$(echo ${dbtitleep} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
+         recdatefield=$(echo ${dbstarttime} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
 
-        #Move new file to new directory rather than replacing Myth file and DB
-        echo "$PROG: fileop is 'new', keeping original file" >>${logfile}
+        #move new file to new directory rather than replacing myth file and db
+        echo "$prog: fileop is 'new', keeping original file" >>${logfile}
 
-        #Set SEASONNUM and EPISODENUM
+        #set seasonnum and episodenum
         tv_lookup
 
-        #Set OUTNAME and OUTDIR
+        #set outname and outdir
         getnewname
 
-        #Move the new file to its final location
-        echo "$PROG: moving new file to $OUTDIR/$OUTNAME.${OPT_FILETYPE}" >>${logfile}
-        if [ -z "`ls "${OUTDIR}" 2>/dev/null`" ]; then
-            mkdir -p "${OUTDIR}"
+        #move the new file to its final location
+        echo "$prog: moving new file to $outdir/$outname.${opt_filetype}" >>${logfile}
+        if [ -z "`ls "${outdir}" 2>/dev/null`" ]; then
+            mkdir -p "${outdir}"
         fi
-        newfile="$OUTDIR/$OUTNAME.${OPT_FILETYPE}"
-        mv -f "${RECDIR}/${BASENOEXT}.${OPT_FILETYPE}" "${newfile}"
+        newfile="$outdir/$outname.${opt_filetype}"
+        mv -f "${recdir}/${basenoext}.${opt_filetype}" "${newfile}"
     fi
 }
 
 
 #-------------------------------------------------------------------------------
-# Close out log and prepare for quitting
+# close out log and prepare for quitting
 #
 function cleanup ()
 {
-    # Execute postcmd if specified
-    # Note, this could be dangerous depending on script context
-    # We should be running as user mythtv with limited permissions
-    # !!!Should this be sed 's/%{/${_/g' to limit access to certain vars??
-    if [ -n "${OPT_POSTCMD}" ]; then
-        EVALSTR=`echo ${OPT_POSTCMD} | sed 's/%{/${/g'`
-        eval ${EVALSTR}
+    # execute postcmd if specified
+    # note, this could be dangerous depending on script context
+    # we should be running as user mythtv with limited permissions
+    # !!!should this be sed 's/%{/${_/g' to limit access to certain vars??
+    if [ -n "${opt_postcmd}" ]; then
+        evalstr=`echo ${opt_postcmd} | sed 's/%{/${/g'`
+        eval ${evalstr}
     fi
     
     #-------------------------------------------------------------------------------
-    echo "$PROG: Completed successfully `date`" >>${logfile}
+    echo "$prog: completed successfully `date`" >>${logfile}
 }
 
 #
-#This construct lets us have a main function that can forward reference other functions
+#this construct lets us have a main function that can forward reference other functions
 main "$@"
 
