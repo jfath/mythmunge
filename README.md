@@ -4,7 +4,17 @@ MythTV user job bash script to remove commercials / transcode / copy / etc. reco
 Jerry Fath jerryfath at gmail dot com  
 Based on an original script by: Ian Thiele icthiele at gmail dot com
 TheTVDB lookup code based on MythSExx by Adam Outler outleradam at hotmail dot com
-
+  
+ **Features**
+   Transcode or remux into any compression type or container supported by ffmpeg  
+   Optionally remove commercials from a recording  
+   Modify the MythTV recording, or produce a new file leaving the original recording unaltered  
+   Look up recording season/episode numbers on TheTVDB  
+   Copy a modified recording into any directory/file structure you choose  
+     (ideal for moving recodings into Kodi or Plex media libraries)  
+   Receive notification emails on job start/complete  
+   Run pre and post commands for WOL, scp to remote machines, etc.  
+   
  **Installation:**  
     Edit defaults in DefaultsEditBlock as appropriate for your system  
     Create config file if needed  
