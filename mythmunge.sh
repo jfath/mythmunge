@@ -56,7 +56,7 @@ DEF_CFGFILE="${HOME}/${PROGNOEXT}/${PROGNOEXT}.cfg"
 DEF_FILEOP="new"
 DEF_NEWDIR="${HOME}/${PROGNOEXT}/DVR"
 DEF_REMCOM="no"
-DEF_FILEFORMAT="mkv"
+DEF_FILETYPE="mkv"
 DEF_NOTIFY="none"
 DEF_VCODEC="copy"
 DEF_VCODECARGS=""
@@ -127,7 +127,7 @@ function parseoptions ()
     OPT_FILEOP=$( optionvalue "fileop=" "${DEF_FILEOP}" )
     OPT_NEWDIR=$( optionvalue "newdir=" "${DEF_NEWDIR}" )
     OPT_REMCOM=$( optionvalue "remcom=" "${DEF_REMCOM}" )
-    OPT_FILEFORMAT=$( optionvalue "fileformat=" "${DEF_FILEFORMAT}" )
+    OPT_FILETYPE=$( optionvalue "filetype=" "${DEF_FILETYPE}" )
     OPT_ACODEC=$( optionvalue "acodec=" "${DEF_ACODEC}" )
     OPT_ACODECARGS=$( optionvalue "acodecargs=" "${DEF_ACODECARGS}" )
     OPT_VCODEC=$( optionvalue "vcodec=" "${DEF_VCODEC}" )
@@ -184,7 +184,11 @@ function quiterror ()
 
 function quitsuccess ()
 {
-  MAILTEXT="Subject:${PROGNOEXT} Success\n\n${PROGNOEXT} successfully processed ${dbtitle} ${dbtitleep} ${dbstarttime} ${dbchanid}\n"
+  if [ "${OPT_FILEOP}" == "new" ]
+    MAILTEXT="Subject:${PROGNOEXT} Success\n\n${PROGNOEXT} successfully processed ${ORIGFILE} to ${newfile}\n"
+  else
+    MAILTEXT="Subject:${PROGNOEXT} Success\n\n${PROGNOEXT} successfully processed ${dbtitle} ${dbtitleep} ${dbstarttime} ${dbchanid}\n"
+  fi
   if [ "$OPT_NOTIFY" == "startend" ] || [ "$OPT_NOTIFY" == "end" ]; then
     donotify "$MAILTEXT"
   fi
@@ -200,21 +204,24 @@ function checkusage ()
         echo "Usage: $PROG /recpath/recfile" [OPTIONSTR]
         echo "OPTIONSTR is a comma delimited list of options"
         echo "fileop=[archive|replace|new]"
-        echo "newdir="
+        echo "newdir=/myvids/dir"
         echo "remcom=[yes|no]"
+        echo "filetype=[mkv|mp4|...]"
         echo "vcodec=[copy|ffmpeg codec]"
-        echo "vcodecargs="
+        echo "vcodecargs=ffmpeg_vcodec_parameters"
         echo "acodec=[copy|ffmpeg codec]"
-        echo "acodecargs="
+        echo "acodecargs=ffmpeg_vcodec_parameters"
         echo "notify=[none|start|end|startend|error]"
-        echo "email="
-        echo "cfgfile="
-        echo "tmpdir="
-        echo "logdir="
-        echo "dbpasswd="
-        echo "tvdblookup="
-        echo "precmd"
-        echo "postcmd="
+        echo "email=user@mailserver.com"
+        echo "cfgfile=/path/to/file.cfg"
+        echo "tmpdir=/path/to/tempdir"
+        echo "logdir=/path/to/logdir"
+        echo "dbpasswd=mythtv_user_password"
+        echo "tvdblookup=[yes|no]"
+        echo "nameformat=%T - s%se%e - %E [%Y-%m-%d %t]"
+        echo "folderformat=/%T/Season %s"
+        echo "precmd=bash_command_string"
+        echo "postcmd=bash_command_string"
         echo ""
         echo "$PROG: file doesn't exist, aborting."
         quiterrorearly
@@ -403,11 +410,11 @@ function transcodecut ()
     done
     echo "#end of list" >>"${OPT_TMPDIR}/clips/${BASENOEXT}.lst"
     
-    if [ -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} ]; then
-        rm -f ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}
+    if [ -f ${RECDIR}/${BASENOEXT}.${OPT_FILETYPE} ]; then
+        rm -f ${RECDIR}/${BASENOEXT}.${OPT_FILETYPE}
     fi
     
-    ffmpeg -f concat -i "${OPT_TMPDIR}/clips/${BASENOEXT}.lst" -c copy ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} &>>${logfile}
+    ffmpeg -f concat -i "${OPT_TMPDIR}/clips/${BASENOEXT}.lst" -c copy ${RECDIR}/${BASENOEXT}.${OPT_FILETYPE} &>>${logfile}
     
     #cleanup OPT_TMPDIR/clips
     rm -f -r "${OPT_TMPDIR}/clips"
@@ -424,7 +431,7 @@ function updatedb ()
         mythutil --chanid $dbchanid --starttime "$dbstarttime" --clearcutlist &>>${logfile}
     
         #we'll need a new filesize to update the db with
-        filesize=$(du ${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT} | awk '{print $1}') 
+        filesize=$(du ${RECDIR}/${BASENOEXT}.${OPT_FILETYPE} | awk '{print $1}') 
     
         #update db with new filesize and filename
         cat <<EOF | $mysqlconnect
@@ -433,7 +440,7 @@ UPDATE
 SET
     cutlist = 0,
     filesize = ${filesize},
-    basename = "${BASENOEXT}.${OPT_FILEFORMAT}"
+    basename = "${BASENOEXT}.${OPT_FILETYPE}"
 WHERE
     chanid = ${dbchanid} AND
     starttime = "${dbstarttime}";
@@ -663,7 +670,8 @@ function replacetemplate ()
     #%y two digit year  
     #%m two digit month  
     #%d two digit day  
-    #%Y four digit year  
+    #%Y four digit year
+    #%h hour_min_sec
     #%u unique episode number
 
     #parse RECDATEFIELD to get date related fields
@@ -681,7 +689,7 @@ function replacetemplate ()
     echo "$PROG datefields: ${year4d} ; ${year2d} ; ${month2d} ; ${day2d} ; ${rectime}" >>${logfile}
 
     newstr=`echo "${newstr}" | sed "s/%T/${SHOWFIELD}/g; s/%E/${EPFIELD}/g; s/%s/${SEASONNUM}/g; s/%e/${EPISODENUM}/g"`
-    newstr=`echo "${newstr}" | sed "s/%y/${year2d}/g; s/%m/${month2d}/g; s/%d/${day2d}/g; s/%Y/${year4d}/g"`
+    newstr=`echo "${newstr}" | sed "s/%y/${year2d}/g; s/%m/${month2d}/g; s/%d/${day2d}/g; s/%Y/${year4d}/g; s/%h/${rectime}/g"`
     echo "${newstr}"
  
     #log the replaced template   
@@ -741,12 +749,12 @@ function namemovenew ()
         getnewname
 
         #Move the new file to its final location
-        echo "$PROG: moving new file to $OUTDIR/$OUTNAME.${OPT_FILEFORMAT}" >>${logfile}
+        echo "$PROG: moving new file to $OUTDIR/$OUTNAME.${OPT_FILETYPE}" >>${logfile}
         if [ -z "`ls "${OUTDIR}" 2>/dev/null`" ]; then
             mkdir -p "${OUTDIR}"
         fi
-        NEWFILE="$OUTDIR/$OUTNAME.${OPT_FILEFORMAT}"
-        mv -f "${RECDIR}/${BASENOEXT}.${OPT_FILEFORMAT}" "${NEWFILE}"
+        newfile="$OUTDIR/$OUTNAME.${OPT_FILETYPE}"
+        mv -f "${RECDIR}/${BASENOEXT}.${OPT_FILETYPE}" "${newfile}"
     fi
 }
 

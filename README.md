@@ -67,7 +67,8 @@ TheTVDB lookup code based on MythSExx by Adam Outler outleradam at hotmail dot c
    %y two digit year  
    %m two digit month  
    %d two digit date  
-   %Y four digit year  
+   %Y four digit year
+   %h hour_min_sec
    %u unique episode number  
   
    the naming format used for a new file  
