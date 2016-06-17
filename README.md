@@ -17,7 +17,8 @@ TheTVDB lookup code based on MythSExx by Adam Outler outleradam at hotmail dot c
    
  **Installation:**  
     Edit defaults in DefaultsEditBlock as appropriate for your system  
-    Create config file if needed  
+    Create config file if needed
+    Configure ssmtp is email notifications are needed  
     Add as a user job in MythTV  
  **Requires:**  
     mythcommflag, ffmpeg (greater than v1.1), ssmtp(optional), curl, agrep  
