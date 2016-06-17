@@ -65,7 +65,7 @@ def_tmpdir="${HOME}/${prognoext}/tmp"
 def_logdir="${HOME}/${prognoext}/log"
 def_dbpasswd="mythtv"
 def_tvdblookup="yes"
-def_nameformat="%T - s%se%e - %E [%Y-%m-%d]"
+def_nameformat="%T - s%se%e - %E [%Y-%m-%d %h]"
 def_folderformat="/%T/season %s"
 def_precmd=""
 def_postcmd=""
@@ -673,17 +673,18 @@ function replacetemplate ()
     #%u unique episode number
 
     #parse recdatefield to get date related fields
-    ifs='-' read -a datefields <<< "${recdatefield}"
+    IFS='-' read -a datefields <<< "${recdatefield}"
     year4d="${datefields[0]}"
+    year2d=${year4d:(-2)}
     month2d="${datefields[1]}"
-    ifs=' ' read -a dayfields <<< "${datefields[2]}"
+    IFS=' ' read -a dayfields <<< "${datefields[2]}"
     day2d="${dayfields[0]}"
     rectime="${dayfields[1]}"
-    year2d=${year4d:(-2)}
 
     #log name components
     echo "$prog formatstr: ${newstr}" >>${logfile}
     echo "$prog showinfo: ${showfield} ; ${epfield} ; ${seasonnum} ; ${episodenum}" >>${logfile}
+    echo "$prog recdate: ${recdatefield}" >>${logfile}
     echo "$prog datefields: ${year4d} ; ${year2d} ; ${month2d} ; ${day2d} ; ${rectime}" >>${logfile}
 
     newstr=`echo "${newstr}" | sed "s/%T/${showfield}/g; s/%E/${epfield}/g; s/%s/${seasonnum}/g; s/%e/${episodenum}/g"`
