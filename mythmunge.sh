@@ -38,8 +38,8 @@
 #
 #
 # TODO:
-# !!!Implement nameformat and folderformat
 # !!!Check problem with last segment when removing commercials
+# !!!Use lower case and underscores for var names
 
 #===============================================================================
 
@@ -698,7 +698,22 @@ function getnewname ()
     OUTDIR="${OPT_NEWDIR}/${dirfrag}"
 
     namefrag=$( replacetemplate "${OPT_NAMEFORMAT}" )
-    #!!!Deal with %u
+    #if format contains %u, replace with unique episode number
+    if [ -n "`echo "${namefrag}" | grep "%u"`" ]; then
+        indx=1
+        while [ $indx -lt 99 ]
+        do
+            #check for e## pattern in outdir
+            chkstr="`printf "e%02d" ${indx}`"
+            if [ -z "`ls "${OUTDIR}" | grep -i ${chkstr}`" ]; then
+                break
+            fi
+            ((indx++))
+        done
+        chkstr="`echo "${namefrag}" | sed 's/%u/%02d/'`"
+        namefrag="`printf "${chkstr}" ${indx}`"
+    fi
+
     OUTNAME="${namefrag}"
 }
 
