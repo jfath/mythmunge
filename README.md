@@ -95,8 +95,11 @@ Based on an original script by: Ian Thiele icthiele@gmail.com
    acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast  
    
  Example of OPTION used to log a message including the new file name as a postcmd  
-   "fileop=new,newdir=/my/vids,postcmd=echo \"finished %{NEWFILE}\" >/home/mongo/mythmunge/post.log"  
-  
+   "fileop=new,newdir=/my/vids,postcmd=echo \"finished %{NEWFILE}\" >/home/mongo/mythmunge/post.log"
+   
+ Example of OPTION used to add unique episode number to a new file than doesn't look up in TheTVDB
+   "tvdblookup=no,nameformat=%T - s00e%u - %E"  
+    
   
 #Config file format  
   
