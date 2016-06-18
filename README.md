@@ -107,22 +107,22 @@ TheTVDB lookup code based on MythSExx by Adam Outler outleradam at hotmail dot c
  Precedence: command line, config file, defaults from mythmunge  
  
  Example MythTV user job to remove commercials and place new recording in DVR directory:  
-   mythmunge.sh "%DIR%/%FILE%" "fileop=new,remcom=yes,newdir=/mnt/myvids/DVR"  
+   "mythmunge.sh "%DIR%/%FILE%" "fileop=new,remcom=yes,newdir=/mnt/myvids/DVR""  
   
  Example of OPTION used to transcode to x264 video with mp3 audio  
-   acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast  
+   "acodec=libmp3lame,acodecargs=-ac 2 -ar 48000 -ab 128k,vcodec=libx264,vcodecargs=-preset ultrafast"  
    
  Example of OPTION used to log a message including the new file name as a postcmd  
-   "fileop=new,newdir=/my/vids,postcmd=echo \"finished %{NEWFILE}\" >/home/mongo/mythmunge/post.log"
+   "fileop=new,newdir=/my/vids,postcmd=echo \"finished %{NEWFILE}\" >/home/mongo/mythmunge/post.log"  
    
- Example of OPTION used to add unique episode number to a new file than doesn't look up in TheTVDB
+ Example of OPTION used to add unique episode number to a new file than doesn't look up in TheTVDB  
    "tvdblookup=no,nameformat=%T - s00e%u - %E"  
     
   
 #Config file format  
   
 nolookup=showtitle  
-options=  
+options=key=value,key2=value2  
   
 multiple lines of nolookup= are allowed and nolookup=* is also allowed to force no lookup for any show  
   
@@ -130,7 +130,7 @@ nolookup=showtitlea
 nolookup=showtitleb  
 nolookup=showtitlec  
   
-options="fileop=new,newdir=\my\vids,remcom=no"  
+options=fileop=new,newdir=\my\vids,remcom=no  
   
 TheTVDB Show Name Translation  
   todo: re-implement within config file and document  
