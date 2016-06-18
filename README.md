@@ -132,17 +132,17 @@ nolookup=showtitlec
   
 options=fileop=new,newdir=\my\vids,remcom=no  
   
-#end config file  
+----- end config file  
   
   
 Example 1: TheTVDB lookup with standard season/episode folder structure  
-options=fileop=new,newdir=/mnt/vidraid/vidtv/DVR,remcom=yes,filetype=mp4,vcodec=copy,acodec=copy,notify=end,email=jerry@fath.us,tmpdir=/mnt/extdata/mythtv/mythmunge/tmp,logdir=/mnt/extdata/mythtv/mythmunge/log,dbpasswd=mythtv,tvdblookup=yes,folderformat=%T/Season %s,nameformat=%T - s%se%e - %E [%Y-%m-%d %h]  
+options=fileop=new,newdir=/mnt/vidraid/vidtv/DVR,remcom=yes,filetype=mp4,vcodec=copy,acodec=copy,notify=end,email=user@mailserver.com,tmpdir=/mnt/extdata/mythtv/mythmunge/tmp,logdir=/mnt/extdata/mythtv/mythmunge/log,dbpasswd=mythtv,tvdblookup=yes,folderformat=%T/Season %s,nameformat=%T - s%se%e - %E [%Y-%m-%d %h]  
   
 Example 2:  No TheTVDB lookup, date based folder structure  
-options=fileop=new,newdir=/mnt/vidraid/vidtv/DVR,remcom=yes,filetype=mp4,vcodec=copy,acodec=copy,notify=end,email=jerry@fath.us,tmpdir=/mnt/extdata/mythtv/mythmunge/tmp,logdir=/mnt/extdata/mythtv/mythmunge/log,dbpasswd=mythtv,tvdblookup=no,folderformat=%T/Season %y,nameformat=%T - %Y %m %d - %E  
+options=fileop=new,newdir=/mnt/vidraid/vidtv/DVR,remcom=yes,filetype=mp4,vcodec=copy,acodec=copy,notify=end,email=user@mailserver.com,tmpdir=/mnt/extdata/mythtv/mythmunge/tmp,logdir=/mnt/extdata/mythtv/mythmunge/log,dbpasswd=mythtv,tvdblookup=no,folderformat=%T/Season %y,nameformat=%T - %Y %m %d - %E  
   
 Example 3  No TheTVDB lookup, calculate a unique episode number:  
-options=fileop=new,newdir=/mnt/vidraid/vidtv/DVR,remcom=yes,filetype=mp4,vcodec=copy,acodec=copy,notify=end,email=jerry@fath.us,tmpdir=/mnt/extdata/mythtv/mythmunge/tmp,logdir=/mnt/extdata/mythtv/mythmunge/log,dbpasswd=mythtv,tvdblookup=no,folderformat=%T/Season %y,nameformat=%T - s%ye%u - %E [%Y-%m-%d %h]    
+options=fileop=new,newdir=/mnt/vidraid/vidtv/DVR,remcom=yes,filetype=mp4,vcodec=copy,acodec=copy,notify=end,email=user@mailserver.com,tmpdir=/mnt/extdata/mythtv/mythmunge/tmp,logdir=/mnt/extdata/mythtv/mythmunge/log,dbpasswd=mythtv,tvdblookup=no,folderformat=%T/Season %y,nameformat=%T - s%ye%u - %E [%Y-%m-%d %h]    
     
     
 #Release notes  
