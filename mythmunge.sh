@@ -38,7 +38,6 @@
 #
 #
 # TODO:
-# !!!Check problem with last segment when removing commercials
 #===============================================================================
 
 #
@@ -346,8 +345,7 @@ function transcodecut ()
     else
         echo "$prog: using existing skiplist" >>${logfile}
     fi
-    
-    echo "$prog: skiplist:$cutlist length:${#cutlist}" >>${logfile}
+    echo "$prog: original skiplist:$cutlist length:${#cutlist}" >>${logfile}
     
     
     #if opt_remcom is no make cutlist one entry that spans entire video
@@ -361,9 +359,8 @@ function transcodecut ()
         cutlist=`mythutil --chanid $dbchanid --starttime "$dbstarttime" --getskiplist | grep "Commercial Skip List" | sed 's/Commercial Skip List: //' | \
         sed 's/-/ /g' | sed 's/^\|$/-/g' | sed 's/,/-/g'`
     fi
+    echo "$prog: Modified cut list: ${cutlist}" >>${logfile}
     
-    #!!!always use matroska for clip containers or use specified file format??
-    echo "$prog: ffmpeg -i ${recdir}/${basename} -acodec ${opt_acodec} ${opt_acodecargs} -vcodec ${opt_vcodec} ${opt_vcodecargs} -f matroska -ss startframe -t duration ${opt_tmpdir}/clips/${basenoext}_clip#.mkv" >>${logfile}
     
     clipcount=0
     for i in ${cutlist}
@@ -371,42 +368,39 @@ function transcodecut ()
         start=`echo $i | sed 's/ //g' | sed 's/^\(.*\)-.*$/\1/'`
         end=`echo $i | sed 's/ //g' | sed 's/^.*-\(.*\)$/\1/'`
     
-        echo "$prog: clip:$clipcount  start:$start  end:$end" >>${logfile}
-    
-        #if $start is empty, deal with it
+        #if $start or end are empty, deal with it
         if [ -z $start ]; then
-        #set start to 0
-        start=0
-        if [ -z $end ]; then
-            end=0
+            #set start to 0
+            start=0
+        fi
+         if [ -z $end ]; then
+            #set end to @12  60fps
+            end=2600000
         fi
         if [ "$start" -eq "$end" ]; then
             continue
         fi
-        fi
+
+        echo "$prog: clip:$clipcount  start:$start  end:$end" >>${logfile}
+
         #convert start into time in seconds (divide frames by frames per second)    
         start=$(echo "scale=8; $start / $fps" | bc -l)
-        #if $end is not null, we can do things
-        if [ -n "$end" ]; then
-        clipcount=$((++clipcount))
         end=$(echo "scale=8; $end / $fps" | bc -l)
         duration=`echo "$end - $start" | bc -l`	
-            printf -v clipstr "%03d" ${clipcount}
-        ffmpeg -i ${recdir}/${basename} -acodec ${opt_acodec} ${opt_acodecargs} -vcodec ${opt_vcodec} ${opt_vcodecargs} -f matroska -ss $start -t $duration ${opt_tmpdir}/clips/${basenoext}_${clipstr}.mkv &>>${logfile}
-        elif [ -z "$end" ]; then
         clipcount=$((++clipcount))
-            printf -v clipstr "%03d" ${clipcount}
-            ffmpeg -i ${recdir}/${basename} -acodec ${opt_acodec} ${opt_acodecargs} -vcodec ${opt_vcodec} ${opt_vcodecargs} -f matroska -ss ${start} ${opt_tmpdir}/clips/${basenoext}_${clipstr}.mkv &>>${logfile}
-        fi
+        printf -v clipstr "%03d" ${clipcount}
+        #!!!always use matroska for clip containers or use specified file format??
+        echo "ffmpeg -i ${recdir}/${basename} -acodec ${opt_acodec} ${opt_acodecargs} -vcodec ${opt_vcodec} ${opt_vcodecargs} -f matroska -ss ${start} -t ${duration} ${opt_tmpdir}/clips/${basenoext}_${clipstr}.mkv" &>>${logfile}
+        ffmpeg -i ${recdir}/${basename} -acodec ${opt_acodec} ${opt_acodecargs} -vcodec ${opt_vcodec} ${opt_vcodecargs} -f matroska -ss ${start} -t ${duration} ${opt_tmpdir}/clips/${basenoext}_${clipstr}.mkv &>>${logfile}
     
     done
     
+    # build clip list file for mmpeg concat
     echo "#start of list: ${opt_tmpdir}/clips/${basenoext}_###" >"${opt_tmpdir}/clips/${basenoext}.lst"
     for i in `ls ${opt_tmpdir}/clips/${basenoext}_* | sort`
     do
         echo "file '$i'" >>"${opt_tmpdir}/clips/${basenoext}.lst"
     done
-    echo "#end of list" >>"${opt_tmpdir}/clips/${basenoext}.lst"
     
     if [ -f ${recdir}/${basenoext}.${opt_filetype} ]; then
         rm -f ${recdir}/${basenoext}.${opt_filetype}
@@ -511,15 +505,15 @@ function lookupsenum ()
     
     #check for show translations relating to the show in question.
     #!!!read these from our config file
-    if [ -f $opt_tmpdir/showtranslations ]; then 
-        local showtranslation=`grep "$showname = " "$opt_tmpdir/showtranslations"|replace "$showname = " ""|replace "$opt_tmpdir/showtranslations" ""`		 
-        if [ "$showtranslation" != "$null" ];then 
-            showname=$showtranslation
-            echo "user translation: $argshowname = $showname">>${logfile}
-        elif [ "$showtranslation" = "$null" ];then
-            $showtranslation = "inactive"
-        fi
-    fi
+#    if [ -f $opt_tmpdir/showtranslations ]; then 
+#        local showtranslation=`grep "$showname = " "$opt_tmpdir/showtranslations"|replace "$showname = " ""|replace "$opt_tmpdir/showtranslations" ""`		 
+#        if [ "$showtranslation" != "$null" ];then 
+#            showname=$showtranslation
+#            echo "user translation: $argshowname = $showname">>${logfile}
+#        elif [ "$showtranslation" = "$null" ];then
+#            $showtranslation = "inactive"
+#        fi
+#    fi
     
      
     #####search for show name#####

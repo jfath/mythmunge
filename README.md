@@ -20,6 +20,7 @@ TheTVDB lookup code based on MythSExx by Adam Outler outleradam at hotmail dot c
     Create config file if needed  
     Configure ssmtp if email notifications are needed  
     Add as a user job in MythTV  
+  
  **Requires:**  
     mythcommflag, ffmpeg (greater than v1.1), ssmtp(optional), curl, agrep  
   
