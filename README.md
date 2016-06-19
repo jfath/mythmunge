@@ -121,18 +121,12 @@ TheTVDB lookup code based on MythSExx by Adam Outler outleradam at hotmail dot c
   
 #Config file format  
   
-nolookup=showtitle  
-options=key=value,key2=value2  
-  
-multiple lines of nolookup= are allowed and nolookup=* is also allowed to force no lookup for any show  
-  
-nolookup=showtitlea  
-nolookup=showtitleb  
-nolookup=showtitlec  
-  
-options=fileop=new,newdir=\my\vids,remcom=no  
+options=key=value,key2=value2
+options-title=key=value,key2=value2  
   
 ----- end config file  
+  
+Note: options-title= will override most options= settings.  Exceptions are logdir, dbpasswd, notify, and email  
   
   
 Example 1: TheTVDB lookup with standard season/episode folder structure  
@@ -157,4 +151,7 @@ Modified 2012/6/27 jfath
  Modified 2016/6/17 jfath  
  Changed to optionstr arguement format to allow additional command  
  line options  
-
+  
+ Modified 2016/6/18 jfath
+ Added options-title= to cfgfile and removed nolookup=  
+  

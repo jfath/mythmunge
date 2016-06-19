@@ -38,6 +38,7 @@
 #
 #
 # TODO:
+# !!!add options-title=options to cfgfile and get rid of nolookup (test)
 #===============================================================================
 
 #
@@ -83,6 +84,7 @@ function main ()
     init
     checkusage
     querydb
+    parseoptionsp2
     initp2
     transcodecut
     updatedb
@@ -102,10 +104,10 @@ function optionvalue()
     opt_this="${2}"
     if [ -n "`echo "${optionstr}" | grep ${1}`" ]; then
         opt_this="`echo "${optionstr}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
-    else
-        if [ -n "`echo "${cfgoptionstr}" | grep ${1}`" ]; then
+    elif [ -n "`echo "${cfgtoptionstr}" | grep ${1}`" ]; then
+        opt_this="`echo "${cfgtoptionstr}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
+    elif [ -n "`echo "${cfgoptionstr}" | grep ${1}`" ]; then
             opt_this="`echo "${cfgoptionstr}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
-        fi
     fi
     echo "${opt_this}"
 }
@@ -116,11 +118,26 @@ function optionvalue()
 #
 function parseoptions ()
 {
+    cfgtoptionstr=""
     cfgoptionstr=""
     opt_cfgfile=$( optionvalue "cfgfile=" "${def_cfgfile}" )
     #look for options in config file too
     cfgoptionstr="`grep '^options=' "${opt_cfgfile}"`"
-    
+
+    opt_logdir=$( optionvalue "logdir=" "${def_logdir}" )
+    opt_dbpasswd=$( optionvalue "dbpasswd=" "${def_dbpasswd}" )
+    #!!!Maybe re-arrange so start email isn't sent yet and allow override
+    opt_notify=$( optionvalue "notify=" "${def_notify}" )
+    opt_email=$( optionvalue "email=" "${def_email}" )
+    #!!!Any others needed?
+}
+
+function parseoptionsp2 ()
+{
+    cfgtoptionstr=""
+    #look for title specific options in config file too
+    cfgtoptionstr="`grep "^options-${dbtitle}=" "${opt_cfgfile}"`"
+
     opt_fileop=$( optionvalue "fileop=" "${def_fileop}" )
     opt_newdir=$( optionvalue "newdir=" "${def_newdir}" )
     opt_remcom=$( optionvalue "remcom=" "${def_remcom}" )
@@ -129,11 +146,7 @@ function parseoptions ()
     opt_acodecargs=$( optionvalue "acodecargs=" "${def_acodecargs}" )
     opt_vcodec=$( optionvalue "vcodec=" "${def_vcodec}" )
     opt_vcodecargs=$( optionvalue "vcodecargs=" "${def_vcodecargs}" )
-    opt_notify=$( optionvalue "notify=" "${def_notify}" )
-    opt_email=$( optionvalue "email=" "${def_email}" )
     opt_tmpdir=$( optionvalue "tmpdir=" "${def_tmpdir}" )
-    opt_logdir=$( optionvalue "logdir=" "${def_logdir}" )
-    opt_dbpasswd=$( optionvalue "dbpasswd=" "${def_dbpasswd}" )
     opt_tvdblookup=$( optionvalue "tvdblookup=" "${def_tvdblookup}" )
     opt_nameformat=$( optionvalue "nameformat=" "${def_nameformat}" )
     opt_folderformat=$( optionvalue "folderformat=" "${def_folderformat}" )
@@ -628,21 +641,7 @@ function tv_lookup ()
     seasonnum="00"
     episodenum="00"
 
-    # nolookup=showtitle in config file
-    # nolookup will prevent season/episode lookup for a show or globally if * wildcard is specified.
-    local nolookupg 
-    local nolookupl
-    
-    #get global settings from command line or config
-    if [ "${opt_tvdblookup}" = "no" ]; then
-        nolookupg="*"
-    else
-        nolookupg=$(cat "$opt_cfgfile" | grep "^nolookup=\*$") 
-    fi
-    #grep a config file to see if we should do a lookup for this show 
-    nolookupl=$(cat "$opt_cfgfile" | grep "^nolookup=$showfield$") 
-
-    if [ -z "$nolookupl" ] && [ -z "$nolookupg" ]; then 
+    if [ "${opt_tvdblookup}" = "yes" ]; then 
         #get season and episode string
         #titlesub2se sets globals seasonnum and episodenum
         lookupsenum "$showfield" "$epfield"
