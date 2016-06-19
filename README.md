@@ -126,7 +126,7 @@ options-title=key=value,key2=value2
   
 ----- end config file  
   
-Note: options-title= will override most options= settings.  Exceptions are logdir, dbpasswd, notify, and email  
+Note: options-title= will override most options= settings.  Exceptions are logdir, dbpasswd  
   
   
 Example 1: TheTVDB lookup with standard season/episode folder structure  

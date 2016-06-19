@@ -126,7 +126,6 @@ function parseoptions ()
 
     opt_logdir=$( optionvalue "logdir=" "${def_logdir}" )
     opt_dbpasswd=$( optionvalue "dbpasswd=" "${def_dbpasswd}" )
-    #!!!Maybe re-arrange so start email isn't sent yet and allow override
     opt_notify=$( optionvalue "notify=" "${def_notify}" )
     opt_email=$( optionvalue "email=" "${def_email}" )
     #!!!Any others needed?
@@ -137,6 +136,10 @@ function parseoptionsp2 ()
     cfgtoptionstr=""
     #look for title specific options in config file too
     cfgtoptionstr="`grep "^options-${dbtitle}=" "${opt_cfgfile}"`"
+
+    #!!!We duplicate these to allow all except early exit emails to be title specific
+    opt_notify=$( optionvalue "notify=" "${def_notify}" )
+    opt_email=$( optionvalue "email=" "${def_email}" )
 
     opt_fileop=$( optionvalue "fileop=" "${def_fileop}" )
     opt_newdir=$( optionvalue "newdir=" "${def_newdir}" )
@@ -233,7 +236,9 @@ function checkusage ()
         echo "precmd=bash_command_string"
         echo "postcmd=bash_command_string"
         echo ""
-        echo "$prog: file doesn't exist, aborting."
+        echo "$prog: file doesn't exist, aborting"
+        
+        echo "Bad usage:  input file "${origfile}" doesn't exist" >>${logfile}
         quiterrorearly
     fi
 }
@@ -260,14 +265,13 @@ function init ()
     
     #start log file with date header
     echo "$prog: starting `date`" >>${logfile}
-    
 
     # make sure we have a sane environment
     if [ -z "`which ffmpeg`" ]; then
         echo "$prog: ffmpeg not present in the path. adjust environment or install ffmpeg" >>${logfile}
         quiterrorearly
     fi
-    
+
 }
 
 #-------------------------------------------------------------------------------
