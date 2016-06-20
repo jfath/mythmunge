@@ -38,7 +38,7 @@
 #
 #
 # TODO:
-# !!!add options-title=options to cfgfile and get rid of nolookup (test)
+# !!!use original air date instead of record date if available
 #===============================================================================
 
 #
@@ -536,6 +536,7 @@ function lookupsenum ()
     #####search for show name#####
     echo "searching: www.thetvdb.com show name: $showname episode: $epn">>${logfile}
     #download series info for show, parse into temporary text db- sid.txt shn.txt
+    #!!!Escape other characters? &
     local tvdbshowname=`echo $showname|replace " " "%20"`
     
     curl -s -m"$opt_tvdbtimeout" www.thetvdb.com/api/GetSeries.php?seriesname=$tvdbshowname>${opt_tmpdir}/tvdb/working.xml
@@ -597,16 +598,8 @@ function lookupsenum ()
             local sxx=`sed -n $absolouteepisodenumber'p' ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".s.txt`
         
             # single digit episode and show names are not allowed ex and sx replaced with exx sxx
-            if [ "$exx" -lt 10 ]; then 
-                exx=`echo 0$exx`
-            elif [ "$exx" -gt 9 ]; then 
-                exx=`echo $exx`
-            fi
-            if [ "$sxx" -lt 10 ]; then 
-                sxx=`echo 0$sxx`
-            elif [ "$sxx" -gt 9 ]; then 
-                sxx=`echo $sxx`
-            fi
+            printf -v exx "%02d" "${exx}"
+            printf -v sxx "%02d" "${sxx}"
         fi
         echo "episode:$epn number:$absolouteepisodenumber $sxx$exx">>${logfile}
         #if series id is not obtained
@@ -708,14 +701,14 @@ function getnewname ()
         while [ $indx -lt 99 ]
         do
             #check for e## pattern in outdir
-            chkstr="`printf "e%02d" ${indx}`"
+            printf -v chkstr "e%02d" ${indx}
             if [ -z "`ls "${outdir}" | grep -i ${chkstr}`" ]; then
                 break
             fi
             ((indx++))
         done
         chkstr="`echo "${namefrag}" | sed 's/%u/%02d/'`"
-        namefrag="`printf "${chkstr}" ${indx}`"
+        printf -v namefrag "${chkstr}" ${indx}
     fi
 
     outname="${namefrag}"
@@ -731,6 +724,7 @@ function namemovenew ()
 {
     if [ "$opt_fileop" == "new" ]; then
          #replace all bad filename characters
+         #!!!Add &
          showfield=$(echo ${dbtitle} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
          epfield=$(echo ${dbtitleep} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
          recdatefield=$(echo ${dbstarttime} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
