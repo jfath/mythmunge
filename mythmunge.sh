@@ -39,6 +39,9 @@
 #
 # TODO:
 # !!!use original air date instead of record date if available
+# !!!Subtitle based options?
+# !!!TheTVDB naming fallback on failure other than s00e00
+# !!!Set permissions to group writeable for new files and folders
 #===============================================================================
 
 #
