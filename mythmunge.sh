@@ -39,9 +39,10 @@
 #
 # TODO:
 # !!!use original air date instead of record date if available
-# !!!Subtitle based options?
+# !!!Subtitle based options (test)
 # !!!TheTVDB naming fallback on failure other than s00e00
-# !!!Set permissions to group writeable for new files and folders
+# !!!Set permissions to group writeable for new files and folders (test)
+# !!!Use myth metadata for season/episode instead of TheTVDB lookup if available
 #===============================================================================
 
 #
@@ -107,6 +108,8 @@ function optionvalue()
     opt_this="${2}"
     if [ -n "`echo "${optionstr}" | grep ${1}`" ]; then
         opt_this="`echo "${optionstr}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
+    elif [ -n "`echo "${cfgteoptionstr}" | grep ${1}`" ]; then
+        opt_this="`echo "${cfgtoptionstr}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
     elif [ -n "`echo "${cfgtoptionstr}" | grep ${1}`" ]; then
         opt_this="`echo "${cfgtoptionstr}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
     elif [ -n "`echo "${cfgoptionstr}" | grep ${1}`" ]; then
@@ -122,6 +125,7 @@ function optionvalue()
 function parseoptions ()
 {
     cfgtoptionstr=""
+    cfgteoptionstr=""
     cfgoptionstr=""
     opt_cfgfile=$( optionvalue "cfgfile=" "${def_cfgfile}" )
     #look for options in config file too
@@ -136,9 +140,9 @@ function parseoptions ()
 
 function parseoptionsp2 ()
 {
-    cfgtoptionstr=""
-    #look for title specific options in config file too
+    #look for title  and title-episode specific options in config file too
     cfgtoptionstr="`grep "^options-${dbtitle}=" "${opt_cfgfile}"`"
+    cfgteoptionstr="`grep "^options-${dbtitle}-${dbtitleep}=" "${opt_cfgfile}"`"
 
     #!!!We duplicate these to allow all except early exit emails to be title specific
     opt_notify=$( optionvalue "notify=" "${def_notify}" )
@@ -745,9 +749,11 @@ function namemovenew ()
         echo "$prog: moving new file to $outdir/$outname.${opt_filetype}" >>${logfile}
         if [ -z "`ls "${outdir}" 2>/dev/null`" ]; then
             mkdir -p "${outdir}"
+            chmod g+w "${outdir}"
         fi
         newfile="$outdir/$outname.${opt_filetype}"
         mv -f "${recdir}/${basenoext}.${opt_filetype}" "${newfile}"
+        chmod g+w "${newfile}"
     fi
 }
 

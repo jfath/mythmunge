@@ -123,10 +123,12 @@ TheTVDB lookup code based on MythSExx by Adam Outler outleradam at hotmail dot c
   
 options=key=value,key2=value2
 options-title=key=value,key2=value2  
+options-title-episode=key=value,key2=value2  
   
 ----- end config file  
   
 Note: options-title= will override most options= settings.  Exceptions are logdir, dbpasswd  
+Note: options-title-episode= will override most options= and options-title settings.  
   
   
 Example 1: TheTVDB lookup with standard season/episode folder structure  
