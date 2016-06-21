@@ -39,7 +39,7 @@
 #
 # TODO:
 # !!!use original air date instead of record date if available
-# !!!Subtitle based options (test)
+# !!!title-episode based options (test)
 # !!!TheTVDB naming fallback on failure other than s00e00
 # !!!Set permissions to group writeable for new files and folders (test)
 # !!!Use myth metadata for season/episode instead of TheTVDB lookup if available
@@ -748,12 +748,17 @@ function namemovenew ()
         #move the new file to its final location
         echo "$prog: moving new file to $outdir/$outname.${opt_filetype}" >>${logfile}
         if [ -z "`ls "${outdir}" 2>/dev/null`" ]; then
-            mkdir -p "${outdir}"
-            chmod g+w "${outdir}"
+            mkdir -p -m 664 "${outdir}"
+            #also change parent for season folder
+            #!!!this will only work two folders deep
+            chkdir=`dirname "${outdir}"`
+            if [ "${chkdir}" != "${opt_newdir}" ]; then
+                chmod 664 "${chkdir}"
+            fi    
         fi
         newfile="$outdir/$outname.${opt_filetype}"
         mv -f "${recdir}/${basenoext}.${opt_filetype}" "${newfile}"
-        chmod g+w "${newfile}"
+        chmod 664 "${newfile}"
     fi
 }
 
