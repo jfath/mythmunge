@@ -39,9 +39,7 @@
 #
 # TODO:
 # !!!use original air date instead of record date if available
-# !!!title-episode based options (test)
-# !!!TheTVDB naming fallback on failure other than s00e00
-# !!!Set permissions to group writeable for new files and folders (test)
+# !!!TheTVDB naming fallback other than s00e00 on failure
 # !!!Use myth metadata for season/episode instead of TheTVDB lookup if available
 #===============================================================================
 
@@ -109,7 +107,7 @@ function optionvalue()
     if [ -n "`echo "${optionstr}" | grep ${1}`" ]; then
         opt_this="`echo "${optionstr}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
     elif [ -n "`echo "${cfgteoptionstr}" | grep ${1}`" ]; then
-        opt_this="`echo "${cfgtoptionstr}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
+        opt_this="`echo "${cfgteoptionstr}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
     elif [ -n "`echo "${cfgtoptionstr}" | grep ${1}`" ]; then
         opt_this="`echo "${cfgtoptionstr}" | sed -r "s/.*${1}([^,]*).*/\1/"`"
     elif [ -n "`echo "${cfgoptionstr}" | grep ${1}`" ]; then
@@ -351,9 +349,7 @@ function querydb ()
 function transcodecut ()
 {
     #tmp clip directory
-    if [ -z "`ls "${opt_tmpdir}"/clips 2>/dev/null`" ]; then
-        mkdir -p "${opt_tmpdir}"/clips
-    fi
+    mkdir -p "${opt_tmpdir}"/clips
     
     
     #debug
@@ -497,9 +493,7 @@ function archivedelete ()
                 echo "$prog: failed to remove ${recdir}/${basename}" >>${logfile}
         fi
     elif [ "${opt_fileop}" == "archive" ]; then
-        if [ -z "`ls "${archivedir}"`" ]; then
-            mkdir -p "${archivedir}"
-        fi
+        mkdir -p "${archivedir}"
         echo "$prog: moving original file to ${archivedir}/${basename}" >>${logfile}
         mv -f "${recdir}/${basename}" "${archivedir}/${basename}"
     fi
@@ -519,9 +513,7 @@ function lookupsenum ()
     echo "thetvdb search initiated at `date`">>${logfile} 
     
     #tmp working directory
-    if [ -z "`ls "${opt_tmpdir}"/tvdb 2>/dev/null`" ]; then
-        mkdir -p "${opt_tmpdir}"/tvdb
-    fi
+    mkdir -p "${opt_tmpdir}"/tvdb
 
     #set episode name, dir, extension, and showname from the input parameters.
     local showname=$argshowname
@@ -747,18 +739,12 @@ function namemovenew ()
 
         #move the new file to its final location
         echo "$prog: moving new file to $outdir/$outname.${opt_filetype}" >>${logfile}
-        if [ -z "`ls "${outdir}" 2>/dev/null`" ]; then
-            mkdir -p -m 664 "${outdir}"
-            #also change parent for season folder
-            #!!!this will only work two folders deep
-            chkdir=`dirname "${outdir}"`
-            if [ "${chkdir}" != "${opt_newdir}" ]; then
-                chmod 664 "${chkdir}"
-            fi    
-        fi
+        #we want new directories and files to be group writeable
+        umask 002
+        mkdir -p "${outdir}"
         newfile="$outdir/$outname.${opt_filetype}"
         mv -f "${recdir}/${basenoext}.${opt_filetype}" "${newfile}"
-        chmod 664 "${newfile}"
+        chmod g+w "${newfile}"
     fi
 }
 
