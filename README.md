@@ -72,7 +72,7 @@ TheTVDB lookup code based on MythSExx by Adam Outler outleradam at hotmail dot c
    mysql or mariadb password for the mythtv user  
   
   tvdblookup=[yes|no]  
-   specifies whether to attempt a tvdb lookup when naming a new file  
+   specifies whether to attempt a tvdb lookup when naming a new file.  if mythtv is supplying metadata use 'no'  
   
   nameformat=format string  
    %T is show title  
@@ -83,7 +83,7 @@ TheTVDB lookup code based on MythSExx by Adam Outler outleradam at hotmail dot c
    %m two digit month  
    %d two digit date  
    %Y four digit year
-   %h hour_min_sec
+   %h hour_min_sec of recording
    %u unique episode number  
   
    the naming format used for a new file  

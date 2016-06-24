@@ -38,9 +38,7 @@
 #
 #
 # TODO:
-# !!!use original air date instead of record date if available
-# !!!TheTVDB naming fallback other than s00e00 on failure
-# !!!Use myth metadata for season/episode instead of TheTVDB lookup if available
+# !!!TheTVDB naming fallback to s00 unique episode# on failure?
 #===============================================================================
 
 #
@@ -262,6 +260,9 @@ function init ()
     basenoext=${basename%.*}
     archivedir="$recdir/archive"
     
+    #we want new directories and files to be group writeable
+    umask 002
+
     #
     #one log file for each recording
     #
@@ -324,6 +325,16 @@ function querydb ()
     echo "chanid: ${dbchanid}   dbstarttime: ${dbstarttime}"  >>${logfile}
     echo "dbtitle: ${dbtitle}   dbtitleep: ${dbtitleep}"  >>${logfile}
     
+    dbairdate=`echo "select originalairdate from recorded where basename=\"$basename\";" | $mysqlconnect`
+    dbseasonnum=`echo "select season from recorded where basename=\"$basename\";" | $mysqlconnect`
+    if [ -z "${dbseasonnum}" ]; then
+        dbseasonnum="0"
+    fi
+    dbepisodenum=`echo "select episode from recorded where basename=\"$basename\";" | $mysqlconnect`
+    if [ -z "${dbepisodenum}" ]; then
+        dbepisodenum="0"
+    fi
+    echo "dbairdate: ${dbairdate} ; dbseasonnum: ${dbseasonnum} ; dbepisodenum ${dbepisodenum}" >>${logfile}
     
     if [ -z "$dbchanid" ] || [ -z "$dbstarttime" ]
     then
@@ -339,6 +350,10 @@ function querydb ()
         echo "$prog: frames per second value not found in mythtv database, script aborted." >>${logfile}
         quiterrorearly
     fi
+
+    #!!!Should fps come from table recordedfile instead of data field of recordedmarkup??
+    dbfps=`echo "select fps from recordedfile where basename=\"$basename\";" | $mysqlconnect`
+    echo "dbfps: ${dbfps} ; fps: ${fps}" >>${logfile}
     
 }
 
@@ -633,14 +648,15 @@ function tv_lookup ()
     #
     #
     
-    # default values if lookup fails
-    seasonnum="00"
-    episodenum="00"
-
+    #Look up or use values from mythdb
     if [ "${opt_tvdblookup}" = "yes" ]; then 
         #get season and episode string
         #titlesub2se sets globals seasonnum and episodenum
         lookupsenum "$showfield" "$epfield"
+    else
+        #db values read from mythconverg set to 0 if not found
+        printf -v episodenum "%02d" "${dbepisodenum}"
+        printf -v seasonnum "%02d" "${dbseasonnum}"
     fi 
 }
 
@@ -663,21 +679,51 @@ function replacetemplate ()
 
     #parse recdatefield to get date related fields
     IFS='-' read -a datefields <<< "${recdatefield}"
-    year4d="${datefields[0]}"
-    year2d=${year4d:(-2)}
-    month2d="${datefields[1]}"
+    year4dr="${datefields[0]}"
+    year2dr=${year4dr:(-2)}
+    month2dr="${datefields[1]}"
     IFS=' ' read -a dayfields <<< "${datefields[2]}"
-    day2d="${dayfields[0]}"
+    day2dr="${dayfields[0]}"
     rectime="${dayfields[1]}"
+
+    #!!!If we have an original air date, default to it, else use record date
+    if [ -z "${airdatefield}" ]; then
+        year4da=""
+        year2da=""
+        month2da=""
+        day2da=""
+
+        year4d="${year4dr}"
+        year2d="${year2dr}"
+        month2d="${month2dr}"
+        day2d="${day2dr}"
+    else
+        IFS='-' read -a datefields <<< "${airdatefield}"
+        year4da="${datefields[0]}"
+        year2da=${year4da:(-2)}
+        month2da="${datefields[1]}"
+        day2da="${datefields[2]}"
+
+        year4d="${year4da}"
+        year2d="${year2da}"
+        month2d="${month2da}"
+        day2d="${day2da}"
+    fi
+
 
     #log name components
     echo "$prog formatstr: ${newstr}" >>${logfile}
     echo "$prog showinfo: ${showfield} ; ${epfield} ; ${seasonnum} ; ${episodenum}" >>${logfile}
     echo "$prog recdate: ${recdatefield}" >>${logfile}
+    echo "$prog airdate: ${airdatefield}" >>${logfile}
     echo "$prog datefields: ${year4d} ; ${year2d} ; ${month2d} ; ${day2d} ; ${rectime}" >>${logfile}
 
+    #%T, %E, %s, %e
     newstr=`echo "${newstr}" | sed "s/%T/${showfield}/g; s/%E/${epfield}/g; s/%s/${seasonnum}/g; s/%e/${episodenum}/g"`
+    #%y, %Y, %m. %d, %h
     newstr=`echo "${newstr}" | sed "s/%y/${year2d}/g; s/%m/${month2d}/g; s/%d/${day2d}/g; s/%Y/${year4d}/g; s/%h/${rectime}/g"`
+    #(%x, %X, %l, %c) allow forcing of record date instead of air date 
+    newstr=`echo "${newstr}" | sed "s/%x/${year2dr}/g; s/%l/${month2dr}/g; s/%c/${day2dr}/g; s/%X/${year4dr}/g"`
     echo "${newstr}"
  
     #log the replaced template   
@@ -727,6 +773,7 @@ function namemovenew ()
          showfield=$(echo ${dbtitle} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
          epfield=$(echo ${dbtitleep} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
          recdatefield=$(echo ${dbstarttime} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
+         airdatefield=$(echo ${dbairdate} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
 
         #move new file to new directory rather than replacing myth file and db
         echo "$prog: fileop is 'new', keeping original file" >>${logfile}
@@ -739,8 +786,6 @@ function namemovenew ()
 
         #move the new file to its final location
         echo "$prog: moving new file to $outdir/$outname.${opt_filetype}" >>${logfile}
-        #we want new directories and files to be group writeable
-        umask 002
         mkdir -p "${outdir}"
         newfile="$outdir/$outname.${opt_filetype}"
         mv -f "${recdir}/${basenoext}.${opt_filetype}" "${newfile}"
