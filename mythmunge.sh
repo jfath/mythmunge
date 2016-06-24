@@ -39,6 +39,7 @@
 #
 # TODO:
 # !!!TheTVDB naming fallback to s00 unique episode# on failure?
+# !!!Add airdate lookup to tvdb code
 #===============================================================================
 
 #
@@ -126,12 +127,11 @@ function parseoptions ()
     opt_cfgfile=$( optionvalue "cfgfile=" "${def_cfgfile}" )
     #look for options in config file too
     cfgoptionstr="`grep '^options=' "${opt_cfgfile}"`"
-
+    # Parse just the options we need for db lookup and early notify
     opt_logdir=$( optionvalue "logdir=" "${def_logdir}" )
     opt_dbpasswd=$( optionvalue "dbpasswd=" "${def_dbpasswd}" )
     opt_notify=$( optionvalue "notify=" "${def_notify}" )
     opt_email=$( optionvalue "email=" "${def_email}" )
-    #!!!Any others needed?
 }
 
 function parseoptionsp2 ()
@@ -140,7 +140,7 @@ function parseoptionsp2 ()
     cfgtoptionstr="`grep "^options-${dbtitle}=" "${opt_cfgfile}"`"
     cfgteoptionstr="`grep "^options-${dbtitle}-${dbtitleep}=" "${opt_cfgfile}"`"
 
-    #!!!We duplicate these to allow all except early exit emails to be title specific
+    #We duplicate these to allow all except early exit emails to be title specific
     opt_notify=$( optionvalue "notify=" "${def_notify}" )
     opt_email=$( optionvalue "email=" "${def_email}" )
 
@@ -686,7 +686,7 @@ function replacetemplate ()
     day2dr="${dayfields[0]}"
     rectime="${dayfields[1]}"
 
-    #!!!If we have an original air date, default to it, else use record date
+    #If we have an original air date, default to it, else use record date
     if [ -z "${airdatefield}" ]; then
         year4da=""
         year2da=""
