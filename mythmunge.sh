@@ -39,7 +39,6 @@
 #
 # TODO:
 # !!!TheTVDB naming fallback to s00 unique episode# on failure?
-# !!!Add airdate lookup to tvdb code
 #===============================================================================
 
 #
@@ -517,7 +516,7 @@ function archivedelete ()
 #-------------------------------------------------------------------------------
 #code from mythsexx
 #usage: lookupsenum "show name" "episode name"
-#output: set globals seasonnum episodenum (00 if not found)
+#output: set globals seasonnum episodenum (00 if not found) and airdate
 #dependencies: curl, agrep
 #
 function lookupsenum ()
@@ -550,8 +549,8 @@ function lookupsenum ()
     #####search for show name#####
     echo "searching: www.thetvdb.com show name: $showname episode: $epn">>${logfile}
     #download series info for show, parse into temporary text db- sid.txt shn.txt
-    #!!!Escape other characters? &
-    local tvdbshowname=`echo $showname|replace " " "%20"`
+    #Encode other characters?
+    local tvdbshowname=`echo $showname|replace "%" "%25"|replace " " "%20"|replace "!" "%21"|replace "\"" "%22"|replace "#" "%23"|replace "$" "%24"|replace "&" "%26"|replace "\'" "%27"`
     
     curl -s -m"$opt_tvdbtimeout" www.thetvdb.com/api/GetSeries.php?seriesname=$tvdbshowname>${opt_tmpdir}/tvdb/working.xml
     cat ${opt_tmpdir}/tvdb/working.xml | grep "<seriesid>"|replace "<seriesid>" ""|replace "</seriesid>" "">${opt_tmpdir}/tvdb/sid.txt
@@ -567,7 +566,6 @@ function lookupsenum ()
     #create folder for database if it does not exist
     if [ ! -d "${opt_tmpdir}/tvdb/$newshowname" ]; then
         mkdir ${opt_tmpdir}/tvdb/"$newshowname"
-        echo "creating home opt_tmpdir and log file">>${logfile}
     fi
     echo "search found:""$newshowname" "id#:" $seriesid >>${logfile}
     
@@ -586,6 +584,7 @@ function lookupsenum ()
             cat "${opt_tmpdir}/tvdb/$newshowname/$newshowname.xml" | grep "<EpisodeName>"|replace "  <EpisodeName>" ""|replace "</EpisodeName>" ""|tr -d [:punct:]>${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".ename.txt
             cat ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".xml | grep "<SeasonNumber>"|replace "<SeasonNumber>" ""|replace "</SeasonNumber>" ""|replace " " "">${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".s.txt
             cat ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".xml | grep "<EpisodeNumber>"|replace "<EpisodeNumber>" ""|replace "</EpisodeNumber>" ""|replace " " "">${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".e.txt
+            cat ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".xml | grep "<FirstAired>"|replace "<FirstAired>" ""|replace "</FirstAired>" ""|replace " " "">${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".d.txt
         elif [ ! -f "${opt_tmpdir}/tvdb/$newshowname/$newshowname.xml" ]; then
             echo "***failure: curl -s -m$opt_tvdbtimeout http://www.thetvdb.com/api/$opt_tvdbapikey/series/$seriesid/all/en.xml">>${logfile}
         fi
@@ -610,6 +609,7 @@ function lookupsenum ()
             #gather series and episode names from files created earlier.
             local exx=`sed -n $absolouteepisodenumber'p' ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".e.txt`
             local sxx=`sed -n $absolouteepisodenumber'p' ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".s.txt`
+            local firstaired=`sed -n $absolouteepisodenumber'p' ${opt_tmpdir}/tvdb/"$newshowname"/"$newshowname".d.txt`
         
             # single digit episode and show names are not allowed ex and sx replaced with exx sxx
             printf -v exx "%02d" "${exx}"
@@ -621,6 +621,8 @@ function lookupsenum ()
         echo "series was not found the tvdb may be down try renaming $argshowname">>${logfile}
     fi
     
+    echo "lookupsenum: season ${sxx}  episode ${exx}  firstaired ${firstaired}" >>${logfile}
+    
     #cleanup opt_tmpdir/tvdb
     rm -f -r "${opt_tmpdir}/tvdb"
 
@@ -628,9 +630,11 @@ function lookupsenum ()
     if [ "$exx" = "" ]; then
             seasonnum="00"
             episodenum="00"
+            airdate=""
     else
             seasonnum="$sxx"
             episodenum="$exx"
+            airdate="${firstaired}"
     fi
 }
 
@@ -651,12 +655,13 @@ function tv_lookup ()
     #Look up or use values from mythdb
     if [ "${opt_tvdblookup}" = "yes" ]; then 
         #get season and episode string
-        #titlesub2se sets globals seasonnum and episodenum
+        #titlesub2se sets globals seasonnum, episodenum and airdate
         lookupsenum "$showfield" "$epfield"
     else
         #db values read from mythconverg set to 0 if not found
         printf -v episodenum "%02d" "${dbepisodenum}"
         printf -v seasonnum "%02d" "${dbseasonnum}"
+        airdate = "${dbairdate}"
     fi 
 }
 
@@ -687,7 +692,7 @@ function replacetemplate ()
     rectime="${dayfields[1]}"
 
     #If we have an original air date, default to it, else use record date
-    if [ -z "${airdatefield}" ]; then
+    if [ -z "${airdate}" ]; then
         year4da=""
         year2da=""
         month2da=""
@@ -698,7 +703,7 @@ function replacetemplate ()
         month2d="${month2dr}"
         day2d="${day2dr}"
     else
-        IFS='-' read -a datefields <<< "${airdatefield}"
+        IFS='-' read -a datefields <<< "${airdate}"
         year4da="${datefields[0]}"
         year2da=${year4da:(-2)}
         month2da="${datefields[1]}"
@@ -715,11 +720,14 @@ function replacetemplate ()
     echo "$prog formatstr: ${newstr}" >>${logfile}
     echo "$prog showinfo: ${showfield} ; ${epfield} ; ${seasonnum} ; ${episodenum}" >>${logfile}
     echo "$prog recdate: ${recdatefield}" >>${logfile}
-    echo "$prog airdate: ${airdatefield}" >>${logfile}
+    echo "$prog airdate: ${airdate}" >>${logfile}
     echo "$prog datefields: ${year4d} ; ${year2d} ; ${month2d} ; ${day2d} ; ${rectime}" >>${logfile}
 
+    #Escape & in title and episode
     #%T, %E, %s, %e
-    newstr=`echo "${newstr}" | sed "s/%T/${showfield}/g; s/%E/${epfield}/g; s/%s/${seasonnum}/g; s/%e/${episodenum}/g"`
+    local showfieldc=`echo "${showfield}" | sed 's/&/\\\&/g'`
+    local epfieldc=`echo "${epfield}" | sed 's/&/\\\&/g'`
+    newstr=`echo "${newstr}" | sed "s/%T/${showfieldc}/g; s/%E/${epfieldc}/g; s/%s/${seasonnum}/g; s/%e/${episodenum}/g"`
     #%y, %Y, %m. %d, %h
     newstr=`echo "${newstr}" | sed "s/%y/${year2d}/g; s/%m/${month2d}/g; s/%d/${day2d}/g; s/%Y/${year4d}/g; s/%h/${rectime}/g"`
     #(%x, %X, %l, %c) allow forcing of record date instead of air date 
@@ -769,11 +777,10 @@ function namemovenew ()
 {
     if [ "$opt_fileop" == "new" ]; then
          #replace all bad filename characters
-         #!!!Add &
+         #!!!Shorten title to characters before colon??  .cfg show title translation with wildcards?
          showfield=$(echo ${dbtitle} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
          epfield=$(echo ${dbtitleep} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
-         recdatefield=$(echo ${dbstarttime} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
-         airdatefield=$(echo ${dbairdate} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
+         recdatefield="${dbstarttime}"
 
         #move new file to new directory rather than replacing myth file and db
         echo "$prog: fileop is 'new', keeping original file" >>${logfile}
