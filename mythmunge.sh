@@ -560,18 +560,6 @@ function lookupsenum ()
     local showname=$argshowname
     local epn=`echo $argepisodename|sed 's/;.*//'|tr -d [:punct:]`
     
-    #check for show translations relating to the show in question.
-    #!!!read these from our config file
-#    if [ -f $opt_tmpdir/showtranslations ]; then 
-#        local showtranslation=`grep "$showname = " "$opt_tmpdir/showtranslations"|replace "$showname = " ""|replace "$opt_tmpdir/showtranslations" ""`		 
-#        if [ "$showtranslation" != "$null" ];then 
-#            showname=$showtranslation
-#            echo "user translation: $argshowname = $showname">>${logfile}
-#        elif [ "$showtranslation" = "$null" ];then
-#            $showtranslation = "inactive"
-#        fi
-#    fi
-    
      
     #####search for show name#####
     echo "searching: www.thetvdb.com show name: $showname episode: $epn">>${logfile}
@@ -804,8 +792,6 @@ function namemovenew ()
 {
     if [ "$opt_fileop" == "new" ]; then
          #replace all bad filename characters
-         #!!!Shorten title to characters before colon??  .cfg show title translation with wildcards or sed patterns?
-         #!!!sed "s/:.*//"
          showfield=$(echo ${dbtitle} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
          epfield=$(echo ${dbtitleep} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
          recdatefield="${dbstarttime}"
