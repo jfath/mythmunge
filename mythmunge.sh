@@ -84,6 +84,7 @@ function main ()
     init
     checkusage
     querydb
+    titlexform
     parseoptionsp2
     initp2
     transcodecut
@@ -356,7 +357,33 @@ function querydb ()
     
 }
 
+#-------------------------------------------------------------------------------
+# perform title string transform based on patterns in config file
+#
+function titlexform ()
+{
+    local cfgtext=`cat "${opt_cfgfile}"`
     
+    local indx=1
+    while [ ${indx} -lt 100 ]
+    do
+        txline=`echo "${cfgtext}" | awk "/^titlex=/{i++}i==${indx}"`
+        if [ -n "${txline}" ]; then
+            IFS='=' read -r -a txfield <<< "${txline}"
+            local chkstr=`echo "${dbtitle}" | grep "${txfield[1]}"`
+            if [ -n "${chkstr}" ]; then
+                local titletx=`echo "${dbtitle}" | sed "s/${txfield[1]}/${txfield[2]}/"`
+                echo  "$prog: Translated title: ${titletx}" >>${logfile}
+                dbtitle="${titletx}"
+                break
+            fi
+            ((indx++))
+        else
+            break
+        fi
+    done
+}
+
 #-------------------------------------------------------------------------------
 # transcode or remux the video file possibly removing commercials
 #
@@ -777,7 +804,8 @@ function namemovenew ()
 {
     if [ "$opt_fileop" == "new" ]; then
          #replace all bad filename characters
-         #!!!Shorten title to characters before colon??  .cfg show title translation with wildcards?
+         #!!!Shorten title to characters before colon??  .cfg show title translation with wildcards or sed patterns?
+         #!!!sed "s/:.*//"
          showfield=$(echo ${dbtitle} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
          epfield=$(echo ${dbtitleep} | sed -e "s:[/?<>\\:*|\"\^]:_:g") 
          recdatefield="${dbstarttime}"

@@ -125,10 +125,15 @@ options=key=value,key2=value2
 options-title=key=value,key2=value2  
 options-title-episode=key=value,key2=value2  
   
+titlex=titleregex=replacementstr  
+titlex=title2regex=replacementstr2
+  
 ----- end config file  
   
-Note: options-title= will override most options= settings.  Exceptions are logdir, dbpasswd  
-Note: options-title-episode= will override most options= and options-title settings.  
+**Notes**
+    options-title= will override most options= settings.  Exceptions are logdir, dbpasswd  
+    options-title-episode= will override most options= and options-title settings.  
+    titlex= entries use sed to manipulate titles pulled from MythTV 
   
   
 Example 1: TheTVDB lookup with standard season/episode folder structure  
