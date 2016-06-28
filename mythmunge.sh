@@ -763,7 +763,7 @@ function getnewname ()
     dirfrag=$( replacetemplate "${opt_folderformat}" )
     outdir="${opt_newdir}/${dirfrag}"
 
-    #if show failed season/episode lookup, let's use a unique episode number (!!!Test)
+    #if show failed season/episode lookup, let's use a unique episode number
     if [ "${episodenum}" == "00" ]; then
         opt_nameformat=`echo "${opt_nameformat}" | sed "s/%e/%u/g;"`
     fi
