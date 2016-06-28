@@ -38,7 +38,6 @@
 #
 #
 # TODO:
-# !!!TheTVDB naming fallback to s00 unique episode# on failure?
 #===============================================================================
 
 #
@@ -747,10 +746,12 @@ function replacetemplate ()
     newstr=`echo "${newstr}" | sed "s/%y/${year2d}/g; s/%m/${month2d}/g; s/%d/${day2d}/g; s/%Y/${year4d}/g; s/%h/${rectime}/g"`
     #(%x, %X, %l, %c) allow forcing of record date instead of air date 
     newstr=`echo "${newstr}" | sed "s/%x/${year2dr}/g; s/%l/${month2dr}/g; s/%c/${day2dr}/g; s/%X/${year4dr}/g"`
-    echo "${newstr}"
  
-    #log the replaced template   
+    #log the replaced string   
     echo "$prog replacedstr: ${newstr}" >>${logfile}
+    
+    #return the replaced string
+    echo "${newstr}"
 }
 
 #-------------------------------------------------------------------------------
@@ -762,7 +763,12 @@ function getnewname ()
     dirfrag=$( replacetemplate "${opt_folderformat}" )
     outdir="${opt_newdir}/${dirfrag}"
 
+    #if show failed season/episode lookup, let's use a unique episode number (!!!Test)
+    if [ "${episodenum}" == "00" ]; then
+        opt_nameformat=`echo "${opt_nameformat}" | sed "s/%e/%u/g;"`
+    fi
     namefrag=$( replacetemplate "${opt_nameformat}" )
+
     #if format contains %u, replace with unique episode number
     if [ -n "`echo "${namefrag}" | grep "%u"`" ]; then
         indx=1
