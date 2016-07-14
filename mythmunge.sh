@@ -342,7 +342,11 @@ function querydb ()
     fi
     
     #determine fps (frames per second) from db, which is used to determine the seek time to extract video clips
-    fps=$(echo "scale=10;`echo "select data from recordedmarkup where chanid=$dbchanid and starttime='$dbstarttime' AND type=32" | $mysqlconnect` / 1000.0" | bc)
+    #fps=$(echo "scale=10;`echo "select data from recordedmarkup where chanid=$dbchanid and starttime='$dbstarttime' AND type=32" | $mysqlconnect` / 1000.0" | bc)
+    #!!!Should fps come from table recordedfile instead of data field of recordedmarkup??
+    dbfps=`echo "select fps from recordedfile where basename=\"$basename\";" | $mysqlconnect`
+    fps="${dbfps}"
+    echo "dbfps: ${dbfps} ; fps: ${fps}" >>${logfile}
     
     if [ -z "$fps" ]
     then
@@ -350,9 +354,6 @@ function querydb ()
         quiterrorearly
     fi
 
-    #!!!Should fps come from table recordedfile instead of data field of recordedmarkup??
-    dbfps=`echo "select fps from recordedfile where basename=\"$basename\";" | $mysqlconnect`
-    echo "dbfps: ${dbfps} ; fps: ${fps}" >>${logfile}
     
 }
 
@@ -675,7 +676,7 @@ function tv_lookup ()
         #db values read from mythconverg set to 0 if not found
         printf -v episodenum "%02d" "${dbepisodenum}"
         printf -v seasonnum "%02d" "${dbseasonnum}"
-        airdate = "${dbairdate}"
+        airdate="${dbairdate}"
     fi 
 }
 
