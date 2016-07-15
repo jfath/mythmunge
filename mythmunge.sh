@@ -818,6 +818,10 @@ function namemovenew ()
         newfile="$outdir/$outname.${opt_filetype}"
         mv -f "${recdir}/${basenoext}.${opt_filetype}" "${newfile}"
         chmod g+w "${newfile}"
+        if [ ! -f "${newfile}" ]; then
+            echo "$prog: Failed to create file ${newfile} `date`" >>${logfile}
+            quiterror
+        fi
     fi
 }
 
@@ -836,7 +840,6 @@ function cleanup ()
         eval ${evalstr}
     fi
     
-    #-------------------------------------------------------------------------------
     echo "$prog: completed successfully `date`" >>${logfile}
 }
 
