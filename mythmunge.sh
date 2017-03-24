@@ -70,6 +70,12 @@ def_precmd=""
 def_postcmd=""
 def_tvdbtimeout="50"
 def_tvdbapikey="6DF511BB2A64E0E9"
+
+#!!! Some versions of ffmpeg need safe set to 0 when using absolute paths
+#Comment this line if 'ffmpeg -safe 0 -help' returns Unregognized option
+#Todo: determine this a run time
+ffmsafe="-safe 0"
+
 #== DEFAULTSEDITBLOCK===========================================================
 
 # we put a little code above for ease of editing defaults
@@ -467,7 +473,8 @@ function transcodecut ()
         rm -f ${recdir}/${basenoext}.${opt_filetype}
     fi
     
-    ffmpeg -f concat -i "${opt_tmpdir}/clips/${basenoext}.lst" -c copy ${recdir}/${basenoext}.${opt_filetype} &>>${logfile}
+    echo "ffmpeg -f concat ${ffmsafe} -i ${opt_tmpdir}/clips/${basenoext}.lst -c copy ${recdir}/${basenoext}.${opt_filetype} &>>${logfile}"
+    ffmpeg -f concat ${ffmsafe} -i "${opt_tmpdir}/clips/${basenoext}.lst" -c copy ${recdir}/${basenoext}.${opt_filetype} &>>${logfile}
     
     #cleanup opt_tmpdir/clips
     rm -f -r "${opt_tmpdir}/clips"
