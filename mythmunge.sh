@@ -73,7 +73,7 @@ def_tvdbapikey="6DF511BB2A64E0E9"
 
 #!!! Some versions of ffmpeg need safe set to 0 when using absolute paths
 #Comment this line if 'ffmpeg -safe 0 -help' returns Unregognized option
-#Todo: determine this a run time
+#Todo: determine this at run time
 ffmsafe="-safe 0"
 
 #== DEFAULTSEDITBLOCK===========================================================
@@ -621,7 +621,8 @@ function lookupsenum ()
         
         #####process show information#####
         #grep use fuzzy logic to find the closest show name from the locally created database and return absolute episode number
-        local absolouteepisodenumber=`agrep -1 -n "${epn:0:29}" "${opt_tmpdir}/tvdb""/""$newshowname""/""$newshowname"".ename.txt"|grep -m1 ^|sed 's/:.*//'`
+        #!!! tail -1 will find the last match in case of duplicates.  Assumes DVD compilations are before actual episodes in xml, which is unreliable at best
+        local absolouteepisodenumber=`agrep -1 -n "${epn:0:29}" "${opt_tmpdir}/tvdb""/""$newshowname""/""$newshowname"".ename.txt"| tail -1 | grep -m1 ^|sed 's/:.*//'`
         echo defined absoloute episode number: $absolouteepisodenumber>>${logfile}
         
         #if line match is obtained, then gather sxx and exx
