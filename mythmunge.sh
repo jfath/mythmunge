@@ -71,11 +71,6 @@ def_postcmd=""
 def_tvdbtimeout="50"
 def_tvdbapikey="6DF511BB2A64E0E9"
 
-#!!! Some versions of ffmpeg need safe set to 0 when using absolute paths
-#Comment this line if 'ffmpeg -safe 0 -help' returns Unregognized option
-#Todo: determine this at run time
-ffmsafe="-safe 0"
-
 #== DEFAULTSEDITBLOCK===========================================================
 
 # we put a little code above for ease of editing defaults
@@ -281,6 +276,16 @@ function init ()
     if [ -z "`which ffmpeg`" ]; then
         echo "$prog: ffmpeg not present in the path. adjust environment or install ffmpeg" >>${logfile}
         quiterrorearly
+    fi
+
+    #Some versions of ffmpeg need -safe 0 when using absolute paths
+    #Check here to see whether ffmpeg recognizes the safe option
+    newffm=`ffmpeg 2>&1 -safe 0 -h | grep 'nrecognized option'`
+    if [ -z "$newffm" ]
+    then
+      ffmsafe="-safe 0"
+    else
+      ffmsafe=""
     fi
 
 }
