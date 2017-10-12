@@ -401,8 +401,12 @@ function titlexform ()
 function transcodecut ()
 {
     #tmp clip directory
+    echo "$prog: creating tmp directory ${opt_tmpdir}/clips" >>${logfile}
     mkdir -p "${opt_tmpdir}"/clips
-    
+    if [ ! -d "${opt_tmpdir}"/clips ]; then
+        echo "$prog: Failed to create tmp directory ${opt_tmpdir}/clips" >>${logfile}
+        quiterror
+    fi
     
     #debug
     #uncomment to force commercial flagging
@@ -462,7 +466,7 @@ function transcodecut ()
         clipcount=$((++clipcount))
         printf -v clipstr "%03d" ${clipcount}
         #!!!always use matroska for clip containers or use specified file format??
-        echo "ffmpeg -i ${recdir}/${basename} -acodec ${opt_acodec} ${opt_acodecargs} -vcodec ${opt_vcodec} ${opt_vcodecargs} -f matroska -ss ${start} -t ${duration} ${opt_tmpdir}/clips/${basenoext}_${clipstr}.mkv" &>>${logfile}
+        echo "$prog: ffmpeg -i ${recdir}/${basename} -acodec ${opt_acodec} ${opt_acodecargs} -vcodec ${opt_vcodec} ${opt_vcodecargs} -f matroska -ss ${start} -t ${duration} ${opt_tmpdir}/clips/${basenoext}_${clipstr}.mkv" &>>${logfile}
         ffmpeg -i ${recdir}/${basename} -acodec ${opt_acodec} ${opt_acodecargs} -vcodec ${opt_vcodec} ${opt_vcodecargs} -f matroska -ss ${start} -t ${duration} ${opt_tmpdir}/clips/${basenoext}_${clipstr}.mkv &>>${logfile}
     
     done
@@ -478,7 +482,7 @@ function transcodecut ()
         rm -f ${recdir}/${basenoext}.${opt_filetype}
     fi
     
-    echo "ffmpeg -f concat ${ffmsafe} -i ${opt_tmpdir}/clips/${basenoext}.lst -c copy ${recdir}/${basenoext}.${opt_filetype} &>>${logfile}"
+    echo "$prog: ffmpeg -f concat ${ffmsafe} -i ${opt_tmpdir}/clips/${basenoext}.lst -c copy ${recdir}/${basenoext}.${opt_filetype}" &>>${logfile}
     ffmpeg -f concat ${ffmsafe} -i "${opt_tmpdir}/clips/${basenoext}.lst" -c copy ${recdir}/${basenoext}.${opt_filetype} &>>${logfile}
     
     #cleanup opt_tmpdir/clips
@@ -827,12 +831,19 @@ function namemovenew ()
 
         #move the new file to its final location
         echo "$prog: moving new file to $outdir/$outname.${opt_filetype}" >>${logfile}
+
+        echo "$prog: creating destination directory ${outdir}" >>${logfile}
         mkdir -p "${outdir}"
+        if [ ! -d "${outdir}" ]; then
+            echo "$prog: Failed to create destination directory ${outdir}" >>${logfile}
+            quiterror
+        fi
+
         newfile="$outdir/$outname.${opt_filetype}"
         mv -f "${recdir}/${basenoext}.${opt_filetype}" "${newfile}"
         chmod g+w "${newfile}"
         if [ ! -f "${newfile}" ]; then
-            echo "$prog: Failed to create file ${newfile} `date`" >>${logfile}
+            echo "$prog: Failed to create file ${newfile}" >>${logfile}
             quiterror
         fi
     fi
